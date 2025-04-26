@@ -15,7 +15,12 @@ const Index = () => {
   const loadGroups = useAppStore((state) => state.loadGroups);
   const loadFriends = useAppStore((state) => state.loadFriends);
   
-  // Reload groups and friends when the component mounts
+  // Monitor activeGroupId changes
+  useEffect(() => {
+    console.log("Active group ID changed to:", activeGroupId);
+  }, [activeGroupId]);
+  
+  // Load initial data
   useEffect(() => {
     if (currentUser) {
       console.log("Loading groups and friends");
