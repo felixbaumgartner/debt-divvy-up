@@ -40,6 +40,10 @@ export const createExpensesSlice: StateCreator<
         throw expenseError;
       }
 
+      // Ensure all participants are also members of the group
+      // This is now handled by the get_group_members function which automatically adds
+      // expense participants to the group_members table
+
       // Insert expense participants
       const participantRecords = participantIds.map(userId => ({
         expense_id: expenseId,
@@ -76,6 +80,10 @@ export const createExpensesSlice: StateCreator<
       set((state) => ({
         expenses: [...state.expenses, newExpense],
       }));
+      
+      // Force a reload of the group to get updated members
+      const loadGroups = get().loadGroups;
+      await loadGroups();
       
       toast({
         title: "Success",

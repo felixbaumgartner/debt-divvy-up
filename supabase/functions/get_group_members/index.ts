@@ -32,7 +32,7 @@ serve(async (req) => {
       throw userError;
     }
     
-    // Get all members of the group
+    // Get all formal members of the group from group_members
     const { data: groupMembers, error: groupMembersError } = await supabaseClient
       .from('group_members')
       .select('user_id')
@@ -43,33 +43,72 @@ serve(async (req) => {
       throw groupMembersError;
     }
     
-    console.log('Found group members:', groupMembers);
+    // Get all users who have participated in expenses for this group but might not be formal members
+    const { data: expenseParticipants, error: expenseParticipantsError } = await supabaseClient
+      .from('expense_participants')
+      .select('user_id, expenses!inner(group_id)')
+      .eq('expenses.group_id', p_group_id);
     
-    // Initialize members array with current user if they are a member
-    let members = [];
-    
-    // Check if current user is already a member in the database
-    const isCurrentUserMember = groupMembers.some(m => m.user_id === user.id);
-    
-    if (isCurrentUserMember) {
-      members.push({
-        id: user.id,
-        name: user.user_metadata.name || 'User',
-        email: user.email,
-        avatarUrl: user.user_metadata.avatar_url
-      });
+    if (expenseParticipantsError) {
+      console.error('Error fetching expense participants:', expenseParticipantsError);
+      throw expenseParticipantsError;
     }
     
-    // Get friends data for other members
-    for (const member of groupMembers) {
-      // Skip if this is the current user (already added)
-      if (member.user_id === user.id) continue;
+    // Combine both sets of user IDs into a unique set
+    const memberIds = new Set();
+    
+    // Add formal group members
+    groupMembers.forEach(member => {
+      memberIds.add(member.user_id);
+    });
+    
+    // Add expense participants
+    expenseParticipants.forEach(participant => {
+      memberIds.add(participant.user_id);
+    });
+    
+    // Get users who paid for expenses in this group
+    const { data: expensePayers, error: expensePayersError } = await supabaseClient
+      .from('expenses')
+      .select('paid_by')
+      .eq('group_id', p_group_id);
+    
+    if (expensePayersError) {
+      console.error('Error fetching expense payers:', expensePayersError);
+      throw expensePayersError;
+    }
+    
+    // Add expense payers
+    expensePayers.forEach(expense => {
+      memberIds.add(expense.paid_by);
+    });
+    
+    console.log('Combined member IDs:', Array.from(memberIds));
+    
+    // Initialize members array
+    let members = [];
+    
+    // Process all the member IDs
+    for (const userId of memberIds) {
+      // Skip processing if we've already added this user
+      if (members.some(m => m.id === userId)) continue;
+      
+      // Special handling for current user
+      if (userId === user.id) {
+        members.push({
+          id: user.id,
+          name: user.user_metadata.name || 'User',
+          email: user.email,
+          avatarUrl: user.user_metadata.avatar_url
+        });
+        continue;
+      }
       
       // Try to find member info in profiles table first
       const { data: profile, error: profileError } = await supabaseClient
         .from('profiles')
         .select('*')
-        .eq('id', member.user_id)
+        .eq('id', userId)
         .single();
         
       if (!profileError && profile) {
@@ -87,7 +126,7 @@ serve(async (req) => {
         .from('friends')
         .select('*')
         .eq('user_id', user.id)
-        .eq('id', member.user_id)
+        .eq('id', userId)
         .single();
       
       if (!friendError && friend) {
@@ -100,13 +139,37 @@ serve(async (req) => {
       } else {
         // If we can't find details, add with generic name
         members.push({
-          id: member.user_id,
+          id: userId,
           name: 'Group Member',
         });
       }
     }
     
     console.log('Final members list:', members);
+    
+    // For every expense participant who is not in the group_members table yet, add them
+    for (const userId of memberIds) {
+      // Check if they're already a formal group member
+      const isFormalMember = groupMembers.some(member => member.user_id === userId);
+      
+      // If not, add them to the group_members table
+      if (!isFormalMember) {
+        const { error: addMemberError } = await supabaseClient
+          .from('group_members')
+          .insert({
+            group_id: p_group_id,
+            user_id: userId
+          })
+          .single();
+        
+        if (addMemberError) {
+          console.warn(`Error adding user ${userId} to group_members:`, addMemberError);
+          // Continue execution even if this fails
+        } else {
+          console.log(`Added user ${userId} to group_members`);
+        }
+      }
+    }
     
     return new Response(JSON.stringify(members), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
