@@ -17,6 +17,7 @@ serve(async (req) => {
 
   try {
     const { friendName, friendEmail, groupName, inviterName } = await req.json();
+    console.log('Received invitation request:', { friendName, friendEmail, groupName, inviterName });
 
     // Enhanced input validation
     if (!friendEmail) {

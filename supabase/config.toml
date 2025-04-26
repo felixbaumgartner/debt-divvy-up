@@ -12,3 +12,6 @@ verify_jwt = true
 
 [functions.get_group_members]
 verify_jwt = true
+
+[functions.send-group-invite]
+verify_jwt = true
