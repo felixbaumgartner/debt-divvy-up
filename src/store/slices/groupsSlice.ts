@@ -1,9 +1,9 @@
-
 import { StateCreator } from 'zustand';
 import { AppState, GroupsSlice } from '../types';
 import { Group } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
+import { toast } from '@/components/ui/use-toast';
 
 export const createGroupsSlice: StateCreator<
   AppState,
@@ -146,5 +146,36 @@ export const createGroupsSlice: StateCreator<
     const { groups } = get();
     const group = groups.find(g => g.id === groupId);
     return group ? group.members : [];
+  },
+  deleteGroup: async (groupId: string) => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('groups')
+        .delete()
+        .eq('id', groupId);
+
+      if (deleteError) {
+        console.error('Error deleting group:', deleteError);
+        toast({
+          title: "Error",
+          description: "Failed to delete group",
+          variant: "destructive",
+        });
+        throw deleteError;
+      }
+
+      set((state) => ({
+        groups: state.groups.filter(g => g.id !== groupId),
+        activeGroupId: state.activeGroupId === groupId ? null : state.activeGroupId
+      }));
+
+      toast({
+        title: "Success",
+        description: "Group deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error in deleteGroup:', error);
+      throw error;
+    }
   },
 });

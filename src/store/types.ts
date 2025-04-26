@@ -1,4 +1,3 @@
-
 import { Group, User, Expense, Payment, DebtSummary } from '@/types';
 
 export interface AuthSlice {
@@ -15,6 +14,7 @@ export interface GroupsSlice {
   setActiveGroup: (groupId: string | null) => void;
   loadGroups: () => Promise<void>;
   getGroupUsers: (groupId: string) => User[];
+  deleteGroup: (groupId: string) => Promise<void>;
 }
 
 export interface ExpensesSlice {
