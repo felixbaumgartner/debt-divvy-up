@@ -33,51 +33,76 @@ serve(async (req) => {
     }
     
     // Get all members of the group
-    const { data: memberIds, error: membersError } = await supabaseClient
+    const { data: groupMembers, error: groupMembersError } = await supabaseClient
       .from('group_members')
       .select('user_id')
       .eq('group_id', p_group_id);
     
-    if (membersError) {
-      console.error('Error fetching group members:', membersError);
-      throw membersError;
+    if (groupMembersError) {
+      console.error('Error fetching group members:', groupMembersError);
+      throw groupMembersError;
     }
     
-    console.log('Found members:', memberIds);
+    console.log('Found group members:', groupMembers);
     
-    // Initialize members array with current user
-    let members = [{
-      id: user.id,
-      name: user.user_metadata.name || 'User',
-      email: user.email,
-      avatarUrl: user.user_metadata.avatar_url
-    }];
+    // Initialize members array with current user if they are a member
+    let members = [];
+    
+    // Check if current user is already a member in the database
+    const isCurrentUserMember = groupMembers.some(m => m.user_id === user.id);
+    
+    if (isCurrentUserMember) {
+      members.push({
+        id: user.id,
+        name: user.user_metadata.name || 'User',
+        email: user.email,
+        avatarUrl: user.user_metadata.avatar_url
+      });
+    }
     
     // Get friends data for other members
-    const otherMemberIds = memberIds
-      .filter(m => m.user_id !== user.id)
-      .map(m => m.user_id);
-    
-    console.log('Other member IDs:', otherMemberIds);
-    
-    if (otherMemberIds.length > 0) {
-      // Try to find members in friends table
-      const { data: friends, error: friendsError } = await supabaseClient
+    for (const member of groupMembers) {
+      // Skip if this is the current user (already added)
+      if (member.user_id === user.id) continue;
+      
+      // Try to find member info in profiles table first
+      const { data: profile, error: profileError } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', member.user_id)
+        .single();
+        
+      if (!profileError && profile) {
+        members.push({
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          avatarUrl: profile.avatar_url
+        });
+        continue;
+      }
+      
+      // If not in profiles, try in friends table
+      const { data: friend, error: friendError } = await supabaseClient
         .from('friends')
         .select('*')
         .eq('user_id', user.id)
-        .in('id', otherMemberIds);
+        .eq('id', member.user_id)
+        .single();
       
-      console.log('Friends found:', friends);
-      
-      if (!friendsError && friends && friends.length > 0) {
-        const friendMembers = friends.map(friend => ({
+      if (!friendError && friend) {
+        members.push({
           id: friend.id,
           name: friend.friend_name,
           email: friend.friend_email,
-          avatarUrl: friend.friend_avatar_url,
-        }));
-        members = [...members, ...friendMembers];
+          avatarUrl: friend.friend_avatar_url
+        });
+      } else {
+        // If we can't find details, add with generic name
+        members.push({
+          id: member.user_id,
+          name: 'Group Member',
+        });
       }
     }
     

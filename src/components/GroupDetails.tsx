@@ -9,7 +9,7 @@ import { AddExpenseForm } from "@/components/AddExpenseForm";
 import { Group, Expense } from "@/types";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PlusIcon, Users } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface GroupDetailsProps {
   group: Group;
@@ -25,14 +25,15 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddExpenseDialogOpen, setIsAddExpenseDialogOpen] = useState(false);
 
-  // Ensure current user is considered as part of the group
-  const allMembers = [...group.members];
+  // For clarity, use the members directly from the group object
+  const allMembers = group.members || [];
   const hasSingleMember = allMembers.length <= 1;
   
-  // Verify the current user is in the members list
+  // Debug logging to help diagnose member issues
   useEffect(() => {
     console.log("Group members:", group.members);
     console.log("Current user:", currentUser);
+    console.log("Total members count:", allMembers.length);
   }, [group.members, currentUser]);
 
   useEffect(() => {
@@ -110,11 +111,18 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
           {allMembers.map((member) => (
             <div key={member.id} className="flex items-center gap-2 bg-purple-50 px-3 py-1 rounded-full">
               <Avatar className="h-6 w-6">
-                <AvatarFallback className="bg-purple-200 text-purple-700 text-xs">
-                  {member.name?.slice(0, 2).toUpperCase() || "U"}
-                </AvatarFallback>
+                {member.avatarUrl ? (
+                  <AvatarImage src={member.avatarUrl} alt={member.name || "User"} />
+                ) : (
+                  <AvatarFallback className="bg-purple-200 text-purple-700 text-xs">
+                    {member.name?.slice(0, 2).toUpperCase() || "U"}
+                  </AvatarFallback>
+                )}
               </Avatar>
-              <span className="text-sm">{member.name}</span>
+              <span className="text-sm">{member.name || "User"}</span>
+              {member.id === currentUser?.id && (
+                <span className="text-xs text-purple-600 font-medium">(You)</span>
+              )}
             </div>
           ))}
         </div>
