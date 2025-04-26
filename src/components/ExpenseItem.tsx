@@ -24,13 +24,13 @@ export function ExpenseItem({ expense }: ExpenseItemProps) {
           <Avatar className="h-10 w-10 mr-3">
             <AvatarImage src={payer?.avatarUrl} />
             <AvatarFallback className="bg-purple-200 text-purple-800">
-              {payer?.name.substring(0, 2).toUpperCase()}
+              {payer?.name?.substring(0, 2).toUpperCase() || 'UN'}
             </AvatarFallback>
           </Avatar>
           <div>
             <p className="font-medium">{expense.description}</p>
             <p className="text-sm text-gray-500">
-              Paid by {payer?.name} • {expense.date.toLocaleDateString()}
+              Paid by {payer?.name || 'Unknown'} • {expense.date.toLocaleDateString()}
             </p>
           </div>
         </div>

@@ -12,11 +12,12 @@ export function GroupCard({ group }: GroupCardProps) {
   const setActiveGroup = useAppStore((state) => state.setActiveGroup);
 
   const handleSelectGroup = () => {
+    console.log("Selecting group:", group.id);
     setActiveGroup(group.id);
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={handleSelectGroup}>
       <CardHeader className="pb-2">
         <CardTitle className="text-xl text-purple-700">{group.name}</CardTitle>
         <CardDescription>{group.description}</CardDescription>
@@ -28,7 +29,10 @@ export function GroupCard({ group }: GroupCardProps) {
         </p>
         <Button 
           className="w-full bg-purple-500 hover:bg-purple-600"
-          onClick={handleSelectGroup}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent triggering both card and button click
+            handleSelectGroup();
+          }}
         >
           View Group
         </Button>

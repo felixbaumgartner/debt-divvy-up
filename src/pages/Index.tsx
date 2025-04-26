@@ -5,12 +5,21 @@ import Dashboard from "./Dashboard";
 import { GroupDetails } from "@/components/GroupDetails";
 import { Button } from "@/components/ui/button";
 import { UserRound } from "lucide-react";
+import { useEffect } from "react";
 
 const Index = () => {
   const currentUser = useAppStore((state) => state.currentUser);
   const activeGroupId = useAppStore((state) => state.activeGroupId);
   const groups = useAppStore((state) => state.groups);
   const setActiveGroup = useAppStore((state) => state.setActiveGroup);
+  const loadGroups = useAppStore((state) => state.loadGroups);
+  
+  // Reload groups when the component mounts to ensure data is fresh
+  useEffect(() => {
+    if (currentUser) {
+      loadGroups();
+    }
+  }, [currentUser, loadGroups]);
   
   // Redirect to auth page if not logged in
   if (!currentUser) {
@@ -37,6 +46,9 @@ const Index = () => {
   }
   
   const activeGroup = groups.find(g => g.id === activeGroupId);
+  console.log("Active group ID:", activeGroupId);
+  console.log("Active group found:", activeGroup);
+  console.log("All groups:", groups);
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -50,6 +62,6 @@ const Index = () => {
       )}
     </div>
   );
-};
+}
 
 export default Index;
