@@ -13,7 +13,6 @@ interface ExpenseItemProps {
 export function ExpenseItem({ expense }: ExpenseItemProps) {
   const getUserById = useAppStore((state) => state.getUserById);
   const currentUser = useAppStore((state) => state.currentUser);
-  const setActiveGroup = useAppStore((state) => state.setActiveGroup);
   const [payer, setPayer] = useState<any>(null);
   const navigate = useNavigate();
   
@@ -22,11 +21,9 @@ export function ExpenseItem({ expense }: ExpenseItemProps) {
     const user = getUserById(expense.paidBy);
     if (user) {
       setPayer(user);
-      console.log("Found payer:", user);
     } else if (expense.paidBy === currentUser?.id) {
       // If the payer is the current user but wasn't found in the users list
       setPayer(currentUser);
-      console.log("Payer is current user:", currentUser);
     } else {
       console.log("No payer found for ID:", expense.paidBy);
     }
@@ -40,10 +37,7 @@ export function ExpenseItem({ expense }: ExpenseItemProps) {
   const handleCardClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent event bubbling
-    console.log("Expense card clicked:", expense.id);
-    
-    // First, make sure we're in the correct group context
-    setActiveGroup(expense.groupId);
+    console.log("Navigating to expense details:", expense.id);
     
     // Navigate to the expense details page
     navigate(`/expenses/${expense.id}`);

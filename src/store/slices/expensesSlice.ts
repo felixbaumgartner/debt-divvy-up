@@ -164,8 +164,8 @@ export const createExpensesSlice: StateCreator<
   },
   getGroupExpenses: async (groupId) => {
     try {
-      // Fetch expenses from Supabase
-      const { data: expenses, error: expensesError } = await supabase
+      // Build query for expenses
+      let query = supabase
         .from('expenses')
         .select(`
           *,
@@ -173,13 +173,21 @@ export const createExpensesSlice: StateCreator<
             user_id,
             share
           )
-        `)
-        .eq('group_id', groupId);
+        `);
+      
+      // If groupId is provided, filter by it, otherwise get all expenses
+      if (groupId) {
+        query = query.eq('group_id', groupId);
+      }
+      
+      const { data: expenses, error: expensesError } = await query;
 
       if (expensesError) {
         console.error('Error fetching expenses:', expensesError);
         return [];
       }
+
+      console.log(`Fetched ${expenses.length} expenses ${groupId ? 'for group ' + groupId : 'across all groups'}`);
 
       // Transform the data to match our app's format
       const transformedExpenses = expenses.map(expense => ({
@@ -197,6 +205,20 @@ export const createExpensesSlice: StateCreator<
           return acc;
         }, {} as Record<string, number>)
       }));
+
+      // Update the store with these expenses
+      if (groupId) {
+        // Only update the stored expenses for the specific group
+        set((state) => ({
+          expenses: [
+            ...state.expenses.filter(e => e.groupId !== groupId),
+            ...transformedExpenses
+          ]
+        }));
+      } else {
+        // Update all expenses in the store
+        set({ expenses: transformedExpenses });
+      }
 
       return transformedExpenses;
     } catch (error) {

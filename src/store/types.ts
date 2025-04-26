@@ -37,7 +37,7 @@ export interface ExpensesSlice {
     amount: number
   ) => Promise<Payment | undefined>;
   settlePayment: (paymentId: string) => Promise<void>;
-  getGroupExpenses: (groupId: string) => Promise<Expense[]>;
+  getGroupExpenses: (groupId: string | null) => Promise<Expense[]>;
   getGroupDebts: (groupId: string) => DebtSummary[];
 }
 

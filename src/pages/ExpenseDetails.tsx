@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Expense } from "@/types";
+import { Loader2 } from "lucide-react";
 
 export default function ExpenseDetails() {
   const { expenseId } = useParams<{ expenseId: string }>();
@@ -14,57 +15,115 @@ export default function ExpenseDetails() {
   const [expense, setExpense] = useState<Expense | null>(null);
   const [payer, setPayer] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const expenses = useAppStore((state) => state.expenses);
+  // Get store functions and data
+  const getGroupExpenses = useAppStore((state) => state.getGroupExpenses);
   const getUserById = useAppStore((state) => state.getUserById);
   const currentUser = useAppStore((state) => state.currentUser);
   const activeGroupId = useAppStore((state) => state.activeGroupId);
   const setActiveGroup = useAppStore((state) => state.setActiveGroup);
-  const users = useAppStore((state) => state.users);
+  const expenses = useAppStore((state) => state.expenses);
+  const loadGroups = useAppStore((state) => state.loadGroups);
+  const loadFriends = useAppStore((state) => state.loadFriends);
   
   useEffect(() => {
-    // Find the expense
-    const foundExpense = expenses.find(e => e.id === expenseId);
-    if (foundExpense) {
-      setExpense(foundExpense);
+    // Load necessary data
+    const loadData = async () => {
+      setIsLoading(true);
+      console.log("Loading expense data for ID:", expenseId);
       
-      // Make sure we're in the correct group context
-      if (activeGroupId !== foundExpense.groupId) {
-        setActiveGroup(foundExpense.groupId);
-      }
-      
-      // Get the payer
-      const payerUser = getUserById(foundExpense.paidBy);
-      if (payerUser) {
-        setPayer(payerUser);
-      } else if (foundExpense.paidBy === currentUser?.id) {
-        // If payer is current user but not found in users list
-        setPayer(currentUser);
-      } else {
-        console.log("Payer not found for ID:", foundExpense.paidBy);
-        // Set default payer info with at least the ID
-        setPayer({
-          id: foundExpense.paidBy,
-          name: "Unknown User",
-        });
-      }
-      
-      // Get participants including the current user
-      const allParticipants = foundExpense.participants.map(userId => {
-        const user = getUserById(userId);
-        if (user) return user;
-        if (userId === currentUser?.id) return currentUser;
+      try {
+        // Make sure groups and friends are loaded
+        await loadGroups();
+        await loadFriends();
+
+        // First check if expense is in the store
+        let foundExpense = expenses.find(e => e.id === expenseId);
+        console.log("Found in store:", foundExpense);
         
-        // Create a placeholder for unknown users
-        return {
-          id: userId,
-          name: `Unknown (${userId.substring(0, 6)}...)`,
-        };
-      }).filter(Boolean);
-      
-      setParticipants(allParticipants);
+        // If not found in store, try to fetch from Supabase
+        if (!foundExpense && expenseId) {
+          console.log("Expense not found in store, fetching from database");
+          
+          // Since we don't know which group this expense belongs to yet,
+          // we'll need to check all groups the user is part of
+          const allExpenses = await getGroupExpenses(null); // null means fetch from all groups
+          foundExpense = allExpenses.find(e => e.id === expenseId);
+          console.log("Fetched from database:", foundExpense);
+        }
+        
+        if (foundExpense) {
+          setExpense(foundExpense);
+          
+          // Make sure we're in the correct group context
+          if (activeGroupId !== foundExpense.groupId) {
+            console.log("Setting active group to:", foundExpense.groupId);
+            setActiveGroup(foundExpense.groupId);
+          }
+          
+          // Get the payer
+          const payerUser = getUserById(foundExpense.paidBy);
+          if (payerUser) {
+            setPayer(payerUser);
+          } else if (foundExpense.paidBy === currentUser?.id) {
+            // If payer is current user but not found in users list
+            setPayer(currentUser);
+          } else {
+            console.log("Payer not found for ID:", foundExpense.paidBy);
+            // Set default payer info with at least the ID
+            setPayer({
+              id: foundExpense.paidBy,
+              name: "Unknown User",
+            });
+          }
+          
+          // Get participants including the current user
+          const allParticipants = foundExpense.participants.map(userId => {
+            const user = getUserById(userId);
+            if (user) return user;
+            if (userId === currentUser?.id) return currentUser;
+            
+            // Create a placeholder for unknown users
+            return {
+              id: userId,
+              name: `Unknown (${userId.substring(0, 6)}...)`,
+            };
+          }).filter(Boolean);
+          
+          setParticipants(allParticipants);
+        } else {
+          console.log("Expense not found after all attempts");
+        }
+      } catch (error) {
+        console.error("Error loading expense details:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (expenseId) {
+      loadData();
     }
-  }, [expenseId, expenses, getUserById, activeGroupId, setActiveGroup, currentUser]);
+  }, [expenseId, expenses, getUserById, activeGroupId, setActiveGroup, currentUser, loadGroups, loadFriends, getGroupExpenses]);
+  
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <Button 
+          variant="ghost" 
+          className="mb-4" 
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </Button>
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+          <span className="ml-2 text-lg text-purple-700">Loading expense details...</span>
+        </div>
+      </div>
+    );
+  }
   
   if (!expense) {
     return (
@@ -78,6 +137,13 @@ export default function ExpenseDetails() {
         </Button>
         <div className="text-center py-12">
           <h2 className="text-xl font-medium">Expense not found</h2>
+          <p className="text-gray-500 mt-2">The expense you're looking for may have been deleted or doesn't exist.</p>
+          <Button 
+            className="mt-4 bg-purple-500 hover:bg-purple-600"
+            onClick={() => navigate("/")}
+          >
+            Return Home
+          </Button>
         </div>
       </div>
     );
