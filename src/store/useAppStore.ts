@@ -3,10 +3,10 @@ import { create } from 'zustand';
 import { Group, User, Expense, Payment, DebtSummary } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { calculateBalances, calculateDebts } from '@/utils/expenseCalculator';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AppState {
-  // Data
-  currentUser: User;
+  currentUser: User | null;
   users: User[];
   groups: Group[];
   expenses: Expense[];
@@ -16,7 +16,7 @@ interface AppState {
   activeGroupId: string | null;
   
   // Actions
-  setCurrentUser: (user: User) => void;
+  setCurrentUser: (user: User | null) => void;
   addUser: (name: string, email?: string, avatarUrl?: string) => void;
   createGroup: (name: string, description?: string) => void;
   addUserToGroup: (groupId: string, userId: string) => void;
@@ -46,26 +46,10 @@ interface AppState {
   getUserById: (userId: string) => User | undefined;
 }
 
-// Create sample user as a placeholder
-const demoUser: User = {
-  id: 'user-1',
-  name: 'Demo User',
-  email: 'demo@example.com',
-  avatarUrl: '',
-};
-
-// Create sample friend
-const demoFriend: User = {
-  id: 'user-2',
-  name: 'Friend',
-  email: 'friend@example.com',
-  avatarUrl: '',
-};
-
+// Initialize the store with no current user
 export const useAppStore = create<AppState>((set, get) => ({
-  // Initial state
-  currentUser: demoUser,
-  users: [demoUser, demoFriend],
+  currentUser: null,
+  users: [],
   groups: [],
   expenses: [],
   payments: [],
@@ -226,3 +210,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     return users.find(u => u.id === userId);
   },
 }));
+
+// Set up auth state listener
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session?.user) {
+    const user: User = {
+      id: session.user.id,
+      name: session.user.user_metadata.name || 'User',
+      email: session.user.email || '',
+      avatarUrl: session.user.user_metadata.avatar_url,
+    };
+    useAppStore.getState().setCurrentUser(user);
+  } else {
+    useAppStore.getState().setCurrentUser(null);
+  }
+});
+

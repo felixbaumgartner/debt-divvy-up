@@ -1,12 +1,30 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AuthForm } from "@/components/AuthForm";
 import { Navigate } from "react-router-dom";
 import { useAppStore } from "@/store/useAppStore";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Auth() {
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const [isLoading, setIsLoading] = useState(true);
   const currentUser = useAppStore((state) => state.currentUser);
+
+  useEffect(() => {
+    // Check current auth status
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoading(false);
+    });
+  }, []);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-700"></div>
+      </div>
+    );
+  }
 
   // Redirect if user is already logged in
   if (currentUser) {
