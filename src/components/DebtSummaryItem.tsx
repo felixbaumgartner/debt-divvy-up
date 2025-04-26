@@ -59,7 +59,7 @@ export function DebtSummaryItem({ debt }: DebtSummaryItemProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="font-medium text-gray-600">
-              {fromUser?.name || 'Unknown user'} owes {formatter.format(debt.amount)} to {toUser?.name || 'Unknown user'}
+              {fromUser?.name || 'Unknown user'} owes {formatter.format(debt.amount)} to {toUser?.name || toUser?.email || 'Unknown person'}
             </span>
             <Button 
               size="sm"
