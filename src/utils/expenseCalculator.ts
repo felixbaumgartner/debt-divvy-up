@@ -58,6 +58,11 @@ export function calculateDebts(balances: Balance[], users: User[]): DebtSummary[
   const creditors = remainingBalances.filter(b => b.amount > 0.01); // Use small threshold to avoid floating point issues
   const debtors = remainingBalances.filter(b => b.amount < -0.01); // Use small threshold to avoid floating point issues
   
+  // If no debts or only one user, there's nothing to settle
+  if (creditors.length === 0 || debtors.length === 0) {
+    return [];
+  }
+  
   // Match debtors with creditors to settle debts
   let creditorIndex = 0;
   let debtorIndex = 0;

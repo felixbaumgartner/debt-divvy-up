@@ -41,6 +41,7 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
   
   const debts = getGroupDebts(group.id);
   const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const hasSingleMember = group.members.length <= 1;
   
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -144,8 +145,10 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
             <div className="bg-gray-50 rounded-lg p-8 text-center">
               <p className="text-gray-600">
                 {expenses.length === 0 
-                  ? "No expenses recorded yet."
-                  : "Everyone is settled up!"}
+                  ? "No expenses recorded yet." 
+                  : hasSingleMember
+                    ? "This group has only one member. Add more members to split expenses."
+                    : "Everyone is settled up!"}
               </p>
             </div>
           ) : (
