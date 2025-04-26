@@ -1,12 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExpenseItem } from "@/components/ExpenseItem";
 import { DebtSummaryItem } from "@/components/DebtSummaryItem";
 import { AddExpenseForm } from "@/components/AddExpenseForm";
-import { Group } from "@/types";
+import { Group, Expense } from "@/types";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PlusIcon } from "lucide-react";
 
@@ -19,17 +19,40 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
   const getGroupExpenses = useAppStore((state) => state.getGroupExpenses);
   const getGroupDebts = useAppStore((state) => state.getGroupDebts);
   
-  const expenses = getGroupExpenses(group.id);
-  const debts = getGroupDebts(group.id);
-  
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isAddExpenseDialogOpen, setIsAddExpenseDialogOpen] = useState(false);
 
+  useEffect(() => {
+    const fetchExpenses = async () => {
+      setIsLoading(true);
+      try {
+        const groupExpenses = await getGroupExpenses(group.id);
+        setExpenses(groupExpenses);
+      } catch (error) {
+        console.error("Failed to fetch expenses:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchExpenses();
+  }, [group.id, getGroupExpenses]);
+  
+  const debts = getGroupDebts(group.id);
   const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
   });
+
+  const handleExpenseAdded = async () => {
+    setIsAddExpenseDialogOpen(false);
+    // Refresh expenses
+    const groupExpenses = await getGroupExpenses(group.id);
+    setExpenses(groupExpenses);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -59,7 +82,7 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
           <DialogContent>
             <AddExpenseForm 
               group={group} 
-              onComplete={() => setIsAddExpenseDialogOpen(false)} 
+              onComplete={handleExpenseAdded} 
             />
           </DialogContent>
         </Dialog>
@@ -93,7 +116,11 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
         </TabsList>
         
         <TabsContent value="expenses" className="space-y-4">
-          {expenses.length === 0 ? (
+          {isLoading ? (
+            <div className="bg-gray-50 rounded-lg p-8 text-center">
+              <p className="text-gray-600">Loading expenses...</p>
+            </div>
+          ) : expenses.length === 0 ? (
             <div className="bg-gray-50 rounded-lg p-8 text-center">
               <p className="text-gray-600 mb-4">No expenses recorded yet.</p>
               <Button 

@@ -1,3 +1,4 @@
+
 import { Group, User, Expense, Payment, DebtSummary } from '@/types';
 
 export interface AuthSlice {
@@ -28,15 +29,15 @@ export interface ExpensesSlice {
     participantIds: string[],
     split?: "equal" | "custom",
     shares?: Record<string, number>
-  ) => void;
+  ) => Promise<Expense | undefined>;
   addPayment: (
     groupId: string,
     fromUserId: string,
     toUserId: string,
     amount: number
-  ) => void;
-  settlePayment: (paymentId: string) => void;
-  getGroupExpenses: (groupId: string) => Expense[];
+  ) => Promise<Payment | undefined>;
+  settlePayment: (paymentId: string) => Promise<void>;
+  getGroupExpenses: (groupId: string) => Promise<Expense[]>;
   getGroupDebts: (groupId: string) => DebtSummary[];
 }
 
