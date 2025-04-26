@@ -93,12 +93,16 @@ export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
     }
   };
 
-  // Combine group members with all users
-  const allParticipants = users.filter(user => 
-    // Include user if they're either in current group or a friend
-    group.members.some(member => member.id === user.id) || 
-    user.id !== currentUser?.id  // Or if they're not the current user
-  );
+  // Create a combined list of participants including current user and group members
+  const allParticipants = [
+    // Include current user if available
+    ...(currentUser ? [currentUser] : []),
+    // Include all other users (both group members and friends)
+    ...users.filter(user => 
+      // Don't duplicate the current user
+      user.id !== currentUser?.id
+    )
+  ];
 
   return (
     <Card>
