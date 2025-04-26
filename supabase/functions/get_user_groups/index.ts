@@ -24,11 +24,16 @@ serve(async (req) => {
     
     console.log('Fetching groups for user:', p_user_id);
     
-    // Use the RLS policy we created to fetch all groups the user has access to
-    // This works for both created groups and joined groups
+    // Improved query to only fetch groups the user is a member of (through the group_members junction table)
+    // This ensures we only get currently valid groups
     const { data: userGroups, error } = await supabaseClient
       .from('groups')
-      .select('*');
+      .select('*')
+      .in('id', 
+        supabaseClient.from('group_members')
+          .select('group_id')
+          .eq('user_id', p_user_id)
+      );
     
     if (error) {
       console.error('Error fetching groups:', error);

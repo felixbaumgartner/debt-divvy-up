@@ -40,15 +40,16 @@ export default function Dashboard() {
     setIsRefreshing(false);
   };
 
+  // Load groups on initial render
   useEffect(() => {
     if (currentUser) {
       loadData();
     }
   }, [currentUser]);
 
+  // Reload groups when dialog closes (e.g., after creating a group)
   useEffect(() => {
-    // When dialog closes after creating a group, refresh the groups list
-    if (!isCreateDialogOpen) {
+    if (!isCreateDialogOpen && currentUser) {
       loadData();
     }
   }, [isCreateDialogOpen]);

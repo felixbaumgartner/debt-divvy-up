@@ -1,3 +1,4 @@
+
 import { StateCreator } from 'zustand';
 import { AppState, GroupsSlice } from '../types';
 import { Group } from '@/types';
@@ -59,6 +60,7 @@ export const createGroupsSlice: StateCreator<
         groups: [...state.groups, newGroup],
       }));
       
+      // Refresh groups from database to ensure we have latest data
       await get().loadGroups();
       return newGroup;
     } catch (error) {
@@ -103,6 +105,9 @@ export const createGroupsSlice: StateCreator<
     if (!currentUser) return;
 
     try {
+      // Clear existing groups first to avoid stale data
+      set({ groups: [] });
+      
       const { data: groupsData, error: groupsError } = await supabase.functions.invoke('get_user_groups', {
         body: { p_user_id: currentUser.id }
       });
@@ -169,6 +174,7 @@ export const createGroupsSlice: StateCreator<
         activeGroupId: state.activeGroupId === groupId ? null : state.activeGroupId
       }));
 
+      // Ensure we remove the group from the state immediately
       toast({
         title: "Success",
         description: "Group deleted successfully",
