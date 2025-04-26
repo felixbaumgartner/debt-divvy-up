@@ -1,31 +1,55 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, User } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
+import { toast } from "@/components/ui/use-toast";
 
 export function FriendsList() {
   const users = useAppStore((state) => state.users);
   const currentUser = useAppStore((state) => state.currentUser);
   const addUser = useAppStore((state) => state.addUser);
+  const loadFriends = useAppStore((state) => state.loadFriends);
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
   const [newFriendName, setNewFriendName] = useState("");
   const [newFriendEmail, setNewFriendEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const friends = users.filter(user => user.id !== currentUser.id);
+  useEffect(() => {
+    if (currentUser) {
+      loadFriends();
+    }
+  }, [currentUser, loadFriends]);
 
-  const handleAddFriend = (e: React.FormEvent) => {
+  const friends = users.filter(user => user.id !== currentUser?.id);
+
+  const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFriendName) return;
     
-    addUser(newFriendName, newFriendEmail);
-    setNewFriendName("");
-    setNewFriendEmail("");
-    setIsAddFriendOpen(false);
+    setIsLoading(true);
+    try {
+      await addUser(newFriendName, newFriendEmail);
+      toast({
+        title: "Success",
+        description: "Friend added successfully!",
+      });
+      setNewFriendName("");
+      setNewFriendEmail("");
+      setIsAddFriendOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add friend. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

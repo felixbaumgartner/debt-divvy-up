@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { Group, User, Expense, Payment, DebtSummary } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -38,6 +37,7 @@ interface AppState {
   ) => void;
   settlePayment: (paymentId: string) => void;
   setActiveGroup: (groupId: string | null) => void;
+  loadFriends: () => Promise<void>;
   
   // Computed
   getGroupExpenses: (groupId: string) => Expense[];
@@ -46,7 +46,6 @@ interface AppState {
   getUserById: (userId: string) => User | undefined;
 }
 
-// Initialize the store with no current user
 export const useAppStore = create<AppState>((set, get) => ({
   currentUser: null,
   users: [],
@@ -58,12 +57,30 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Actions
   setCurrentUser: (user) => set({ currentUser: user }),
   
-  addUser: (name, email, avatarUrl) => {
+  addUser: async (name, email, avatarUrl) => {
+    if (!get().currentUser) return;
+
+    const { data: friend, error } = await supabase
+      .from('friends')
+      .insert({
+        user_id: get().currentUser.id,
+        friend_name: name,
+        friend_email: email,
+        friend_avatar_url: avatarUrl,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding friend:', error);
+      return;
+    }
+
     const newUser: User = {
-      id: uuidv4(),
-      name,
-      email,
-      avatarUrl,
+      id: friend.id,
+      name: friend.friend_name,
+      email: friend.friend_email,
+      avatarUrl: friend.friend_avatar_url,
     };
     
     set((state) => ({
@@ -184,6 +201,30 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   setActiveGroup: (groupId) => set({ activeGroupId: groupId }),
   
+  loadFriends: async () => {
+    const { currentUser } = get();
+    if (!currentUser) return;
+
+    const { data: friends, error } = await supabase
+      .from('friends')
+      .select('*')
+      .eq('user_id', currentUser.id);
+
+    if (error) {
+      console.error('Error loading friends:', error);
+      return;
+    }
+
+    const users = friends.map((friend): User => ({
+      id: friend.id,
+      name: friend.friend_name,
+      email: friend.friend_email,
+      avatarUrl: friend.friend_avatar_url,
+    }));
+
+    set({ users });
+  },
+  
   // Computed values
   getGroupExpenses: (groupId) => {
     const { expenses } = get();
@@ -211,7 +252,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 }));
 
-// Set up auth state listener
 supabase.auth.onAuthStateChange((event, session) => {
   if (session?.user) {
     const user: User = {
@@ -225,4 +265,3 @@ supabase.auth.onAuthStateChange((event, session) => {
     useAppStore.getState().setCurrentUser(null);
   }
 });
-
