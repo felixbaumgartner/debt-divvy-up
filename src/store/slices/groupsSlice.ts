@@ -196,11 +196,13 @@ export const createGroupsSlice: StateCreator<
   },
   deleteGroup: async (groupId: string) => {
     try {
-      const { error: deleteError } = await supabase
-        .rpc('soft_delete_group', { 
-          p_group_id: groupId,
-          p_deleted_at: new Date().toISOString()
-        });
+      // First update the database
+      const { error: deleteError } = await supabase.functions.invoke('soft_delete_group', {
+        body: { 
+          group_id: groupId,
+          deleted_at: new Date().toISOString()
+        }
+      });
 
       if (deleteError) {
         console.error('Error deleting group:', deleteError);
@@ -212,10 +214,14 @@ export const createGroupsSlice: StateCreator<
         throw deleteError;
       }
 
+      // Immediately update local state
       set((state) => ({
         groups: state.groups.filter(g => g.id !== groupId),
         activeGroupId: state.activeGroupId === groupId ? null : state.activeGroupId
       }));
+
+      // Trigger a fresh load of groups to ensure sync
+      await get().loadGroups();
 
       toast({
         title: "Success",
