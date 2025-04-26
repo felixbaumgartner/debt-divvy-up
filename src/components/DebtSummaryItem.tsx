@@ -20,13 +20,6 @@ export function DebtSummaryItem({ debt }: DebtSummaryItemProps) {
   const fromUser = getUserById(debt.fromUserId);
   const toUser = getUserById(debt.toUserId);
   
-  // Log for debugging
-  useEffect(() => {
-    console.log("Rendering DebtSummaryItem with debt:", debt);
-    console.log("FromUser:", fromUser);
-    console.log("ToUser:", toUser);
-  }, [debt, fromUser, toUser]);
-  
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -82,7 +75,6 @@ export function DebtSummaryItem({ debt }: DebtSummaryItemProps) {
             </Button>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Split amount:</span>
             <span className="font-bold text-lg text-purple-600">
               {formatter.format(debt.amount)}
             </span>
