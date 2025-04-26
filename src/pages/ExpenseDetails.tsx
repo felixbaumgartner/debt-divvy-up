@@ -35,19 +35,32 @@ export default function ExpenseDetails() {
       
       // Get the payer
       const payerUser = getUserById(foundExpense.paidBy);
-      setPayer(payerUser || currentUser); // Fallback to current user if payer not found
+      if (payerUser) {
+        setPayer(payerUser);
+      } else if (foundExpense.paidBy === currentUser?.id) {
+        // If payer is current user but not found in users list
+        setPayer(currentUser);
+      } else {
+        console.log("Payer not found for ID:", foundExpense.paidBy);
+        // Set default payer info with at least the ID
+        setPayer({
+          id: foundExpense.paidBy,
+          name: "Unknown User",
+        });
+      }
       
       // Get participants including the current user
       const allParticipants = foundExpense.participants.map(userId => {
         const user = getUserById(userId);
-        return user || (userId === currentUser?.id ? currentUser : null);
+        if (user) return user;
+        if (userId === currentUser?.id) return currentUser;
+        
+        // Create a placeholder for unknown users
+        return {
+          id: userId,
+          name: `Unknown (${userId.substring(0, 6)}...)`,
+        };
       }).filter(Boolean);
-
-      // Make sure current user is included if they're a participant
-      if (foundExpense.participants.includes(currentUser?.id || '') && 
-          !allParticipants.find(p => p.id === currentUser?.id)) {
-        allParticipants.unshift(currentUser);
-      }
       
       setParticipants(allParticipants);
     }
@@ -84,6 +97,14 @@ export default function ExpenseDetails() {
     minute: '2-digit'
   }).format(date);
 
+  // Get payer initials for avatar fallback
+  const getPayerInitials = () => {
+    if (payer?.name) {
+      return payer.name.substring(0, 2).toUpperCase();
+    }
+    return 'UN';
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <Button 
@@ -115,7 +136,7 @@ export default function ExpenseDetails() {
                     <Avatar className="h-10 w-10 mr-3">
                       <AvatarImage src={payer?.avatarUrl} />
                       <AvatarFallback className="bg-purple-200 text-purple-800">
-                        {payer?.name ? payer.name.substring(0, 2).toUpperCase() : 'UN'}
+                        {getPayerInitials()}
                       </AvatarFallback>
                     </Avatar>
                     <span className="font-medium">{payer.name}</span>

@@ -12,19 +12,25 @@ interface ExpenseItemProps {
 
 export function ExpenseItem({ expense }: ExpenseItemProps) {
   const getUserById = useAppStore((state) => state.getUserById);
+  const currentUser = useAppStore((state) => state.currentUser);
   const setActiveGroup = useAppStore((state) => state.setActiveGroup);
   const [payer, setPayer] = useState<any>(null);
   const navigate = useNavigate();
   
   useEffect(() => {
+    // Try to find the payer user
     const user = getUserById(expense.paidBy);
     if (user) {
       setPayer(user);
       console.log("Found payer:", user);
+    } else if (expense.paidBy === currentUser?.id) {
+      // If the payer is the current user but wasn't found in the users list
+      setPayer(currentUser);
+      console.log("Payer is current user:", currentUser);
     } else {
       console.log("No payer found for ID:", expense.paidBy);
     }
-  }, [expense.paidBy, getUserById]);
+  }, [expense.paidBy, getUserById, currentUser]);
   
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -43,6 +49,19 @@ export function ExpenseItem({ expense }: ExpenseItemProps) {
     navigate(`/expenses/${expense.id}`);
   };
 
+  // Get payer initials for avatar fallback
+  const getPayerInitials = () => {
+    if (payer?.name) {
+      return payer.name.substring(0, 2).toUpperCase();
+    }
+    return 'UN';
+  };
+
+  // Get payer name or fallback
+  const getPayerName = () => {
+    return payer?.name || 'Unknown';
+  };
+
   return (
     <Card 
       className="mb-2 cursor-pointer hover:bg-gray-50 transition-colors"
@@ -53,13 +72,13 @@ export function ExpenseItem({ expense }: ExpenseItemProps) {
           <Avatar className="h-10 w-10 mr-3">
             <AvatarImage src={payer?.avatarUrl} />
             <AvatarFallback className="bg-purple-200 text-purple-800">
-              {payer?.name ? payer.name.substring(0, 2).toUpperCase() : 'UN'}
+              {getPayerInitials()}
             </AvatarFallback>
           </Avatar>
           <div>
             <p className="font-medium">{expense.description}</p>
             <p className="text-sm text-gray-500">
-              Paid by {payer?.name || 'Unknown'} • {new Date(expense.date).toLocaleDateString()}
+              Paid by {getPayerName()} • {new Date(expense.date).toLocaleDateString()}
             </p>
           </div>
         </div>
