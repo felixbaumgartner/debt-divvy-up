@@ -1,3 +1,4 @@
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Expense } from "@/types";
@@ -10,19 +11,17 @@ interface ExpenseItemProps {
 
 export function ExpenseItem({ expense }: ExpenseItemProps) {
   const getUserById = useAppStore((state) => state.getUserById);
-  const currentUser = useAppStore((state) => state.currentUser);
   const [payer, setPayer] = useState<any>(null);
   
   useEffect(() => {
-    // Check if the expense was paid by the current user
-    if (expense.paidBy === currentUser?.id) {
-      setPayer(currentUser);
-    } else {
-      // Otherwise try to get the user from the store
-      const user = getUserById(expense.paidBy);
+    const user = getUserById(expense.paidBy);
+    if (user) {
       setPayer(user);
+      console.log("Found payer:", user);
+    } else {
+      console.log("No payer found for ID:", expense.paidBy);
     }
-  }, [expense.paidBy, getUserById, currentUser]);
+  }, [expense.paidBy, getUserById]);
   
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',

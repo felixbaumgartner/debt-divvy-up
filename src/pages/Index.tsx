@@ -15,12 +15,15 @@ const Index = () => {
   const loadGroups = useAppStore((state) => state.loadGroups);
   const loadFriends = useAppStore((state) => state.loadFriends);
   
-  // Reload groups and friends when the component mounts to ensure data is fresh
+  // Reload groups and friends when the component mounts
   useEffect(() => {
     if (currentUser) {
       console.log("Loading groups and friends");
-      loadGroups();
-      loadFriends();
+      const loadData = async () => {
+        await loadGroups();
+        await loadFriends();
+      };
+      loadData();
     }
   }, [currentUser, loadGroups, loadFriends]);
   
@@ -58,7 +61,10 @@ const Index = () => {
       {activeGroup ? (
         <GroupDetails 
           group={activeGroup}
-          onBack={() => setActiveGroup(null)}
+          onBack={() => {
+            console.log("Setting active group to null");
+            setActiveGroup(null);
+          }}
         />
       ) : (
         <Dashboard />
