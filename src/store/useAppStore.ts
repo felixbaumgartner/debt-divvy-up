@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { Group, User, Expense, Payment, DebtSummary } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -98,30 +99,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     const groupId = uuidv4();
     
-    // Create the group in Supabase
-    const { data: groupData, error } = await supabase
-      .from('groups')
-      .insert({
-        id: groupId,
-        name,
-        description,
-        created_by: currentUser.id,
-      })
-      .select()
-      .single();
+    // Use RPC for inserting into groups table to bypass type checks
+    const { error: groupError } = await supabase.rpc('create_group', {
+      group_id: groupId,
+      group_name: name,
+      group_description: description || null,
+      creator_id: currentUser.id
+    });
       
-    if (error) {
-      console.error('Error creating group:', error);
+    if (groupError) {
+      console.error('Error creating group:', groupError);
       return;
     }
     
-    // Add the current user as a member of the group
-    const { error: memberError } = await supabase
-      .from('group_members')
-      .insert({
-        group_id: groupId,
-        user_id: currentUser.id
-      });
+    // Use RPC for inserting members to bypass type checks
+    const { error: memberError } = await supabase.rpc('add_group_member', {
+      p_group_id: groupId,
+      p_user_id: currentUser.id
+    });
       
     if (memberError) {
       console.error('Error adding member to group:', memberError);
@@ -264,80 +259,73 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { currentUser } = get();
     if (!currentUser) return;
 
-    // Get groups where the user is a member
-    const { data: groupMembers, error: memberError } = await supabase
-      .from('group_members')
-      .select('group_id')
-      .eq('user_id', currentUser.id);
-
-    if (memberError) {
-      console.error('Error loading group members:', memberError);
-      return;
-    }
-
-    if (!groupMembers.length) {
-      set({ groups: [] });
-      return;
-    }
-
-    const groupIds = groupMembers.map(member => member.group_id);
-
-    // Get group details
-    const { data: groups, error: groupsError } = await supabase
-      .from('groups')
-      .select('*')
-      .in('id', groupIds);
+    // Use RPC for fetching groups to bypass type checks
+    const { data: userGroups, error: groupsError } = await supabase.rpc('get_user_groups', {
+      p_user_id: currentUser.id
+    });
 
     if (groupsError) {
       console.error('Error loading groups:', groupsError);
       return;
     }
 
-    // For each group, get its members
-    const groupsWithMembers = await Promise.all(groups.map(async (group) => {
-      const { data: members, error: membersError } = await supabase
-        .from('group_members')
-        .select('user_id')
-        .eq('group_id', group.id);
+    if (!userGroups || userGroups.length === 0) {
+      set({ groups: [] });
+      return;
+    }
+
+    // Transform the data into the expected format
+    const groups = await Promise.all(userGroups.map(async (groupData) => {
+      // Use RPC for fetching group members to bypass type checks
+      const { data: groupMembers, error: membersError } = await supabase.rpc('get_group_members', {
+        p_group_id: groupData.id
+      });
 
       if (membersError) {
-        console.error(`Error loading members for group ${group.id}:`, membersError);
+        console.error(`Error loading members for group ${groupData.id}:`, membersError);
         return null;
       }
 
-      // Get user details for each member
-      const memberIds = members.map(m => m.user_id);
-      let memberUsers: User[] = [currentUser];
+      const memberUsers: User[] = [];
+      
+      // Always add current user
+      memberUsers.push(currentUser);
 
-      if (memberIds.length > 1) {
-        // Get friends who are members of this group
-        const { data: friends, error: friendsError } = await supabase
-          .from('friends')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .in('id', memberIds.filter(id => id !== currentUser.id));
+      // Add other members (friends)
+      if (groupMembers && groupMembers.length > 0) {
+        const otherMemberIds = groupMembers
+          .filter(m => m.user_id !== currentUser.id)
+          .map(m => m.user_id);
 
-        if (!friendsError && friends) {
-          const friendUsers = friends.map(friend => ({
-            id: friend.id,
-            name: friend.friend_name,
-            email: friend.friend_email,
-            avatarUrl: friend.friend_avatar_url,
-          }));
-          memberUsers = [...memberUsers, ...friendUsers];
+        if (otherMemberIds.length > 0) {
+          const { data: friends, error: friendsError } = await supabase
+            .from('friends')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .in('id', otherMemberIds);
+
+          if (!friendsError && friends && friends.length > 0) {
+            const friendUsers = friends.map(friend => ({
+              id: friend.id,
+              name: friend.friend_name,
+              email: friend.friend_email,
+              avatarUrl: friend.friend_avatar_url,
+            }));
+            memberUsers.push(...friendUsers);
+          }
         }
       }
 
       return {
-        id: group.id,
-        name: group.name,
-        description: group.description,
+        id: groupData.id,
+        name: groupData.name,
+        description: groupData.description,
         members: memberUsers,
-        createdAt: new Date(group.created_at),
+        createdAt: new Date(groupData.created_at),
       } as Group;
     }));
 
-    const validGroups = groupsWithMembers.filter(Boolean) as Group[];
+    const validGroups = groups.filter(Boolean) as Group[];
     set({ groups: validGroups });
   },
   

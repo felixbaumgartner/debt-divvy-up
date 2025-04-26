@@ -1,1 +1,14 @@
+
 project_id = "avnrfhookjadabdhudtg"
+
+[functions.create_group]
+verify_jwt = true
+
+[functions.add_group_member]
+verify_jwt = true
+
+[functions.get_user_groups]
+verify_jwt = true
+
+[functions.get_group_members]
+verify_jwt = true
