@@ -197,10 +197,12 @@ export const createGroupsSlice: StateCreator<
   },
   deleteGroup: async (groupId: string) => {
     try {
+      // Use a raw query with JSONB syntax to update the deleted_at field
       const { error: deleteError } = await supabase
-        .from('groups')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', groupId);
+        .rpc('soft_delete_group', { 
+          p_group_id: groupId,
+          p_deleted_at: new Date().toISOString()
+        });
 
       if (deleteError) {
         console.error('Error deleting group:', deleteError);
