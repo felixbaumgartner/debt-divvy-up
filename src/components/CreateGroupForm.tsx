@@ -15,6 +15,7 @@ interface CreateGroupFormProps {
 
 export function CreateGroupForm({ onComplete }: CreateGroupFormProps) {
   const createGroup = useAppStore((state) => state.createGroup);
+  const loadGroups = useAppStore((state) => state.loadGroups);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +37,9 @@ export function CreateGroupForm({ onComplete }: CreateGroupFormProps) {
       console.log("Creating group:", name, description);
       const group = await createGroup(name, description);
       console.log("Group created:", group);
+      
+      // Explicitly reload groups to ensure we have the latest data
+      await loadGroups();
       
       // Reset form
       setName("");

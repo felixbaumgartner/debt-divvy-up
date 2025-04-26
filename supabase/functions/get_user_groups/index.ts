@@ -24,25 +24,43 @@ serve(async (req) => {
     
     console.log('Fetching groups for user:', p_user_id);
     
-    // Improved query to only fetch groups the user is a member of (through the group_members junction table)
-    // This ensures we only get currently valid groups
-    const { data: userGroups, error } = await supabaseClient
-      .from('groups')
-      .select('*')
-      .in('id', 
-        supabaseClient.from('group_members')
-          .select('group_id')
-          .eq('user_id', p_user_id)
-      );
+    // First, get the group IDs that the user is a member of
+    const { data: membershipData, error: membershipError } = await supabaseClient
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', p_user_id);
     
-    if (error) {
-      console.error('Error fetching groups:', error);
-      throw error;
+    if (membershipError) {
+      console.error('Error fetching group memberships:', membershipError);
+      throw membershipError;
     }
     
-    console.log('Found groups for user:', userGroups?.length || 0);
+    // No memberships found
+    if (!membershipData || membershipData.length === 0) {
+      console.log('No group memberships found for user');
+      return new Response(JSON.stringify([]), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
-    return new Response(JSON.stringify(userGroups || []), {
+    // Extract group IDs from memberships
+    const groupIds = membershipData.map(membership => membership.group_id);
+    console.log('User is a member of groups:', groupIds);
+    
+    // Fetch the actual group data
+    const { data: groupsData, error: groupsError } = await supabaseClient
+      .from('groups')
+      .select('*')
+      .in('id', groupIds);
+    
+    if (groupsError) {
+      console.error('Error fetching groups:', groupsError);
+      throw groupsError;
+    }
+    
+    console.log('Found groups:', groupsData?.length || 0);
+    
+    return new Response(JSON.stringify(groupsData || []), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

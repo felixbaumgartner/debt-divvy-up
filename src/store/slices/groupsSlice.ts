@@ -16,36 +16,46 @@ export const createGroupsSlice: StateCreator<
   activeGroupId: null,
   createGroup: async (name, description) => {
     const { currentUser } = get();
-    if (!currentUser) return;
+    if (!currentUser) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create a group",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       console.log("Creating group:", name, description);
       const groupId = uuidv4();
       
-      const { error: groupError } = await supabase
-        .from('groups')
-        .insert({
-          id: groupId,
-          name,
-          description,
-          created_by: currentUser.id
-        });
+      const { data, error } = await supabase.functions.invoke('create_group', {
+        body: { 
+          group_id: groupId,
+          group_name: name,
+          group_description: description,
+          creator_id: currentUser.id
+        }
+      });
         
-      if (groupError) {
-        console.error('Error creating group:', groupError);
-        throw groupError;
+      if (error) {
+        console.error('Error creating group:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create group",
+          variant: "destructive",
+        });
+        throw error;
       }
       
-      const { error: memberError } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: groupId,
-          user_id: currentUser.id
+      if (!data?.success) {
+        console.error('Error creating group:', data?.error || 'Unknown error');
+        toast({
+          title: "Error",
+          description: "Failed to create group",
+          variant: "destructive",
         });
-        
-      if (memberError) {
-        console.error('Error adding member to group:', memberError);
-        throw memberError;
+        throw new Error(data?.error || 'Unknown error');
       }
       
       const newGroup: Group = {
@@ -62,6 +72,12 @@ export const createGroupsSlice: StateCreator<
       
       // Refresh groups from database to ensure we have latest data
       await get().loadGroups();
+      
+      toast({
+        title: "Success",
+        description: "Group created successfully",
+      });
+      
       return newGroup;
     } catch (error) {
       console.error('Error in createGroup:', error);
@@ -108,16 +124,24 @@ export const createGroupsSlice: StateCreator<
       // Clear existing groups first to avoid stale data
       set({ groups: [] });
       
+      console.log("Loading groups for user:", currentUser.id);
+      
       const { data: groupsData, error: groupsError } = await supabase.functions.invoke('get_user_groups', {
         body: { p_user_id: currentUser.id }
       });
   
       if (groupsError) {
         console.error('Error loading groups:', groupsError);
+        toast({
+          title: "Error",
+          description: "Failed to load groups",
+          variant: "destructive",
+        });
         return;
       }
   
       if (!groupsData || !Array.isArray(groupsData)) {
+        console.log("No groups found or invalid data format");
         set({ groups: [] });
         return;
       }
@@ -142,9 +166,15 @@ export const createGroupsSlice: StateCreator<
       }));
   
       const validGroups = groups.filter(Boolean) as Group[];
+      console.log("Loaded groups:", validGroups.length);
       set({ groups: validGroups });
     } catch (error) {
       console.error('Error in loadGroups:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load groups",
+        variant: "destructive",
+      });
     }
   },
   getGroupUsers: (groupId) => {
@@ -174,7 +204,6 @@ export const createGroupsSlice: StateCreator<
         activeGroupId: state.activeGroupId === groupId ? null : state.activeGroupId
       }));
 
-      // Ensure we remove the group from the state immediately
       toast({
         title: "Success",
         description: "Group deleted successfully",
