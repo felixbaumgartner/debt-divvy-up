@@ -18,7 +18,7 @@ serve(async (req) => {
   try {
     const { friendName, friendEmail, groupName, inviterName } = await req.json();
 
-    // Input validation
+    // Enhanced input validation
     if (!friendEmail) {
       console.error('Missing required field: friendEmail');
       throw new Error('Friend email is required');
@@ -29,7 +29,15 @@ serve(async (req) => {
       throw new Error('Group name is required');
     }
 
-    console.log(`Sending email to ${friendEmail} for group "${groupName}" invite from ${inviterName}`);
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(friendEmail)) {
+      console.error('Invalid email format:', friendEmail);
+      throw new Error('Invalid email format');
+    }
+
+    console.log(`Preparing to send email to ${friendEmail} for group "${groupName}" invite from ${inviterName}`);
+    console.log('Using Resend API key:', !!Deno.env.get("RESEND_API_KEY")); // Just log if key exists
 
     const emailResponse = await resend.emails.send({
       from: "Debt Divvy-Up <onboarding@resend.dev>",
@@ -44,6 +52,13 @@ serve(async (req) => {
       `,
     });
 
+    console.log("Email response received:", emailResponse);
+
+    if ('error' in emailResponse) {
+      console.error('Resend API error:', emailResponse.error);
+      throw new Error(`Failed to send email: ${emailResponse.error}`);
+    }
+
     console.log("Email sent successfully:", emailResponse);
 
     return new Response(JSON.stringify(emailResponse), {
@@ -53,7 +68,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in send-group-invite function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        stack: error.stack // Include stack trace for debugging
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

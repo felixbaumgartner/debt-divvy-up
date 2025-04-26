@@ -1,8 +1,8 @@
-
 import { StateCreator } from 'zustand';
 import { AppState, FriendsSlice } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
+import { toast } from '@/components/ui/use-toast';
 
 export const createFriendsSlice: StateCreator<
   AppState,
@@ -14,34 +14,78 @@ export const createFriendsSlice: StateCreator<
   addUser: async (name, email, avatarUrl) => {
     if (!get().currentUser) return;
 
-    const { data: friend, error } = await supabase
-      .from('friends')
-      .insert({
-        user_id: get().currentUser.id,
-        friend_name: name,
-        friend_email: email,
-        friend_avatar_url: avatarUrl,
-      })
-      .select()
-      .single();
+    try {
+      // First create a profile if it doesn't exist
+      if (email) {
+        console.log("Creating profile for friend:", { name, email });
+        const { data: existingProfile, error: profileCheckError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
 
-    if (error) {
-      console.error('Error adding friend:', error);
-      return;
+        if (profileCheckError) {
+          console.error('Error checking existing profile:', profileCheckError);
+          throw profileCheckError;
+        }
+
+        if (!existingProfile) {
+          const { data: profile, error: createProfileError } = await supabase
+            .from('profiles')
+            .insert({
+              name,
+              email,
+              avatar_url: avatarUrl,
+            })
+            .select()
+            .single();
+
+          if (createProfileError) {
+            console.error('Error creating profile:', createProfileError);
+            throw createProfileError;
+          }
+          console.log("Created new profile:", profile);
+        }
+      }
+
+      // Then add the friend record
+      const { data: friend, error } = await supabase
+        .from('friends')
+        .insert({
+          user_id: get().currentUser.id,
+          friend_name: name,
+          friend_email: email,
+          friend_avatar_url: avatarUrl,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding friend:', error);
+        throw error;
+      }
+
+      const newUser: User = {
+        id: friend.id,
+        name: friend.friend_name,
+        email: friend.friend_email,
+        avatarUrl: friend.friend_avatar_url,
+      };
+      
+      set((state) => ({
+        users: [...state.users.filter(u => u.id !== newUser.id), newUser],
+      }));
+      
+      return newUser;
+    } catch (error) {
+      console.error('Error in addUser:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add friend. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
     }
-
-    const newUser: User = {
-      id: friend.id,
-      name: friend.friend_name,
-      email: friend.friend_email,
-      avatarUrl: friend.friend_avatar_url,
-    };
-    
-    set((state) => ({
-      users: [...state.users.filter(u => u.id !== newUser.id), newUser],
-    }));
-    
-    return newUser;
   },
   loadFriends: async () => {
     const { currentUser } = get();

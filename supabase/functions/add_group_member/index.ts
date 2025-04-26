@@ -25,54 +25,61 @@ serve(async (req) => {
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', // Use service role key to bypass RLS
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
     
-    // First check if this user already exists in profiles table
+    console.log(`Adding member ${p_user_id} to group ${p_group_id}`);
+    
+    // First ensure user exists in profiles table
     const { data: profileData, error: profileError } = await supabaseClient
       .from('profiles')
       .select('*')
       .eq('id', p_user_id)
       .single();
       
-    if (profileError || !profileData) {
-      console.error('User profile not found:', profileError);
+    if (profileError) {
+      console.log('Profile not found, checking friends table');
       
-      // Try to get the user from friends table to create a profile
+      // Get friend data
       const { data: friendData, error: friendError } = await supabaseClient
         .from('friends')
         .select('*')
         .eq('id', p_user_id)
         .single();
         
-      if (!friendError && friendData) {
-        // Create a profile for this friend
-        const { error: createProfileError } = await supabaseClient
-          .from('profiles')
-          .insert({
-            id: p_user_id,
-            name: friendData.friend_name,
-            email: friendData.friend_email,
-            avatar_url: friendData.friend_avatar_url
-          });
-          
-        if (createProfileError) {
-          console.error('Failed to create profile from friend data:', createProfileError);
-          return new Response(
-            JSON.stringify({ error: "Could not create user profile" }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      } else {
+      if (friendError) {
+        console.error('Error fetching friend data:', friendError);
         return new Response(
-          JSON.stringify({ error: "User doesn't exist. Please add the user as a friend first." }),
+          JSON.stringify({ error: "User not found in profiles or friends" }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      console.log('Creating profile from friend data:', friendData);
+      
+      // Create profile from friend data
+      const { error: createProfileError } = await supabaseClient
+        .from('profiles')
+        .insert({
+          id: p_user_id,
+          name: friendData.friend_name,
+          email: friendData.friend_email,
+          avatar_url: friendData.friend_avatar_url
+        });
+        
+      if (createProfileError) {
+        console.error('Failed to create profile:', createProfileError);
+        return new Response(
+          JSON.stringify({ error: "Could not create user profile", details: createProfileError }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('Profile created successfully');
     }
     
-    // Check if user is already a member of this group
+    // Check if already a member
     const { data: existingMember, error: checkError } = await supabaseClient
       .from('group_members')
       .select('*')
@@ -81,12 +88,14 @@ serve(async (req) => {
       .single();
       
     if (!checkError && existingMember) {
-      // User is already a member, return success
+      console.log('User is already a member');
       return new Response(
         JSON.stringify({ success: true, message: "User is already a member of this group" }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log('Adding user to group_members');
     
     // Insert the group member
     const { error } = await supabaseClient
@@ -99,10 +108,12 @@ serve(async (req) => {
     if (error) {
       console.error('Error adding user to group_members:', error);
       return new Response(
-        JSON.stringify({ error: `Failed to add member: ${error.message}` }),
+        JSON.stringify({ error: `Failed to add member: ${error.message}`, details: error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log('Successfully added user to group');
     
     return new Response(
       JSON.stringify({ success: true }),
@@ -111,7 +122,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Exception in add_group_member:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message, stack: error.stack }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
