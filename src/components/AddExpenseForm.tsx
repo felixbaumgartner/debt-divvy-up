@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppStore } from "@/store/useAppStore";
 import { FormEvent, useState, useEffect } from "react";
-import { Group, User } from "@/types";
+import { Group } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 
@@ -75,6 +75,7 @@ export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
         onComplete();
       }
     } catch (error) {
+      console.error('Error adding expense:', error);
       toast({
         title: "Error",
         description: "Failed to add expense. Please try again.",
