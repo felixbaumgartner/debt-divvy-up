@@ -12,6 +12,7 @@ interface ExpenseItemProps {
 
 export function ExpenseItem({ expense }: ExpenseItemProps) {
   const getUserById = useAppStore((state) => state.getUserById);
+  const setActiveGroup = useAppStore((state) => state.setActiveGroup);
   const [payer, setPayer] = useState<any>(null);
   const navigate = useNavigate();
   
@@ -34,8 +35,12 @@ export function ExpenseItem({ expense }: ExpenseItemProps) {
     e.preventDefault();
     e.stopPropagation(); // Prevent event bubbling
     console.log("Expense card clicked:", expense.id);
-    // You can navigate to a detailed expense view here if needed
-    // For now, just log the click
+    
+    // First, make sure we're in the correct group context
+    setActiveGroup(expense.groupId);
+    
+    // Navigate to the expense details page
+    navigate(`/expenses/${expense.id}`);
   };
 
   return (
