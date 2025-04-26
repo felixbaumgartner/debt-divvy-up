@@ -99,44 +99,53 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     const groupId = uuidv4();
     
-    // Use RPC for inserting into groups table to bypass type checks
-    const { error: groupError } = await supabase.rpc('create_group', {
-      group_id: groupId,
-      group_name: name,
-      group_description: description || null,
-      creator_id: currentUser.id
-    });
+    try {
+      // Call the Edge Function to create a group
+      const { error: groupError } = await supabase.functions.invoke('create_group', {
+        body: {
+          group_id: groupId,
+          group_name: name, 
+          group_description: description || null,
+          creator_id: currentUser.id
+        }
+      });
+        
+      if (groupError) {
+        console.error('Error creating group:', groupError);
+        return;
+      }
       
-    if (groupError) {
-      console.error('Error creating group:', groupError);
-      return;
-    }
-    
-    // Use RPC for inserting members to bypass type checks
-    const { error: memberError } = await supabase.rpc('add_group_member', {
-      p_group_id: groupId,
-      p_user_id: currentUser.id
-    });
+      // Call the Edge Function to add the creator as a member
+      const { error: memberError } = await supabase.functions.invoke('add_group_member', {
+        body: {
+          p_group_id: groupId,
+          p_user_id: currentUser.id
+        }
+      });
+        
+      if (memberError) {
+        console.error('Error adding member to group:', memberError);
+        return;
+      }
       
-    if (memberError) {
-      console.error('Error adding member to group:', memberError);
-      return;
+      const newGroup: Group = {
+        id: groupId,
+        name,
+        description,
+        members: [currentUser],
+        createdAt: new Date(),
+      };
+      
+      set((state) => ({
+        groups: [...state.groups, newGroup],
+        activeGroupId: newGroup.id,
+      }));
+      
+      return newGroup;
+    } catch (error) {
+      console.error('Error in createGroup:', error);
+      throw error;
     }
-    
-    const newGroup: Group = {
-      id: groupId,
-      name,
-      description,
-      members: [currentUser],
-      createdAt: new Date(),
-    };
-    
-    set((state) => ({
-      groups: [...state.groups, newGroup],
-      activeGroupId: newGroup.id,
-    }));
-    
-    return newGroup;
   },
   
   addUserToGroup: (groupId, userId) => {
@@ -178,7 +187,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     amount,
     paidById,
     participantIds,
-    split: "equal" | "custom" = "equal",
+    split = "equal",
     shares
   ) => {
     const newExpense: Expense = {
@@ -259,74 +268,48 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { currentUser } = get();
     if (!currentUser) return;
 
-    // Use RPC for fetching groups to bypass type checks
-    const { data: userGroups, error: groupsError } = await supabase.rpc('get_user_groups', {
-      p_user_id: currentUser.id
-    });
-
-    if (groupsError) {
-      console.error('Error loading groups:', groupsError);
-      return;
-    }
-
-    if (!userGroups || userGroups.length === 0) {
-      set({ groups: [] });
-      return;
-    }
-
-    // Transform the data into the expected format
-    const groups = await Promise.all(userGroups.map(async (groupData) => {
-      // Use RPC for fetching group members to bypass type checks
-      const { data: groupMembers, error: membersError } = await supabase.rpc('get_group_members', {
-        p_group_id: groupData.id
+    try {
+      // Get user's groups using Edge Function
+      const { data: userGroups, error: groupsError } = await supabase.functions.invoke('get_user_groups', {
+        body: { p_user_id: currentUser.id }
       });
-
-      if (membersError) {
-        console.error(`Error loading members for group ${groupData.id}:`, membersError);
-        return null;
+  
+      if (groupsError) {
+        console.error('Error loading groups:', groupsError);
+        return;
       }
-
-      const memberUsers: User[] = [];
-      
-      // Always add current user
-      memberUsers.push(currentUser);
-
-      // Add other members (friends)
-      if (groupMembers && groupMembers.length > 0) {
-        const otherMemberIds = groupMembers
-          .filter(m => m.user_id !== currentUser.id)
-          .map(m => m.user_id);
-
-        if (otherMemberIds.length > 0) {
-          const { data: friends, error: friendsError } = await supabase
-            .from('friends')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .in('id', otherMemberIds);
-
-          if (!friendsError && friends && friends.length > 0) {
-            const friendUsers = friends.map(friend => ({
-              id: friend.id,
-              name: friend.friend_name,
-              email: friend.friend_email,
-              avatarUrl: friend.friend_avatar_url,
-            }));
-            memberUsers.push(...friendUsers);
-          }
+  
+      if (!userGroups || userGroups.length === 0) {
+        set({ groups: [] });
+        return;
+      }
+  
+      // Transform the data into the expected format
+      const groups = await Promise.all(userGroups.map(async (groupData) => {
+        // Get group members using Edge Function
+        const { data: members, error: membersError } = await supabase.functions.invoke('get_group_members', {
+          body: { p_group_id: groupData.id }
+        });
+  
+        if (membersError) {
+          console.error(`Error loading members for group ${groupData.id}:`, membersError);
+          return null;
         }
-      }
-
-      return {
-        id: groupData.id,
-        name: groupData.name,
-        description: groupData.description,
-        members: memberUsers,
-        createdAt: new Date(groupData.created_at),
-      } as Group;
-    }));
-
-    const validGroups = groups.filter(Boolean) as Group[];
-    set({ groups: validGroups });
+  
+        return {
+          id: groupData.id,
+          name: groupData.name,
+          description: groupData.description,
+          members: members || [],
+          createdAt: new Date(groupData.created_at),
+        } as Group;
+      }));
+  
+      const validGroups = groups.filter(Boolean) as Group[];
+      set({ groups: validGroups });
+    } catch (error) {
+      console.error('Error in loadGroups:', error);
+    }
   },
   
   // Computed values
