@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppStore } from "@/store/useAppStore";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { Group, User } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/components/ui/use-toast";
 
 interface AddExpenseFormProps {
   group: Group;
@@ -17,35 +18,70 @@ interface AddExpenseFormProps {
 export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
   const currentUser = useAppStore((state) => state.currentUser);
   const addExpense = useAppStore((state) => state.addExpense);
+  const users = useAppStore((state) => state.users);
+  const loadFriends = useAppStore((state) => state.loadFriends);
 
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [paidBy, setPaidBy] = useState(currentUser.id);
+  const [paidBy, setPaidBy] = useState(currentUser?.id || "");
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>(
     group.members.map((m) => m.id)
   );
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  // Ensure friends are loaded
+  useEffect(() => {
+    const fetchFriends = async () => {
+      await loadFriends();
+    };
+    
+    fetchFriends();
+  }, [loadFriends]);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (!description || !amount) return;
+    if (!description || !amount) {
+      toast({
+        title: "Error",
+        description: "Please fill out all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    addExpense(
-      group.id,
-      description,
-      parseFloat(amount),
-      paidBy,
-      selectedParticipants
-    );
+    setIsLoading(true);
+    try {
+      await addExpense(
+        group.id,
+        description,
+        parseFloat(amount),
+        paidBy,
+        selectedParticipants
+      );
 
-    // Reset form
-    setDescription("");
-    setAmount("");
-    setPaidBy(currentUser.id);
-    setSelectedParticipants(group.members.map((m) => m.id));
+      // Reset form
+      setDescription("");
+      setAmount("");
+      setPaidBy(currentUser?.id || "");
+      setSelectedParticipants(group.members.map((m) => m.id));
 
-    if (onComplete) {
-      onComplete();
+      toast({
+        title: "Success",
+        description: "Expense added successfully!",
+      });
+
+      if (onComplete) {
+        onComplete();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add expense. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -56,6 +92,13 @@ export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
       setSelectedParticipants([...selectedParticipants, userId]);
     }
   };
+
+  // Combine group members with all users
+  const allParticipants = users.filter(user => 
+    // Include user if they're either in current group or a friend
+    group.members.some(member => member.id === user.id) || 
+    user.id !== currentUser?.id  // Or if they're not the current user
+  );
 
   return (
     <Card>
@@ -95,7 +138,7 @@ export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
                 <SelectValue placeholder="Who paid?" />
               </SelectTrigger>
               <SelectContent>
-                {group.members.map((member) => (
+                {allParticipants.map((member) => (
                   <SelectItem key={member.id} value={member.id}>
                     {member.name}
                   </SelectItem>
@@ -107,7 +150,7 @@ export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
           <div className="space-y-2">
             <Label>Split between</Label>
             <div className="border rounded-md p-3 space-y-2">
-              {group.members.map((member) => (
+              {allParticipants.map((member) => (
                 <div key={member.id} className="flex items-center space-x-2">
                   <Checkbox
                     id={`user-${member.id}`}
@@ -122,8 +165,12 @@ export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
             </div>
           </div>
           
-          <Button type="submit" className="w-full bg-purple-500 hover:bg-purple-600">
-            Add Expense
+          <Button 
+            type="submit" 
+            className="w-full bg-purple-500 hover:bg-purple-600"
+            disabled={isLoading}
+          >
+            {isLoading ? "Adding..." : "Add Expense"}
           </Button>
         </form>
       </CardContent>
