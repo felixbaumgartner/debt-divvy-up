@@ -22,11 +22,20 @@ export function CreateGroupForm({ onComplete }: CreateGroupFormProps) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (!name) return;
+    if (!name) {
+      toast({
+        title: "Error",
+        description: "Group name is required",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
-      await createGroup(name, description);
+      console.log("Creating group:", name, description);
+      const group = await createGroup(name, description);
+      console.log("Group created:", group);
       
       // Reset form
       setName("");

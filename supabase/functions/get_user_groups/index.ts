@@ -22,30 +22,49 @@ serve(async (req) => {
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
     
+    console.log('Fetching groups for user:', p_user_id);
+    
     // Get groups where the user is a member
-    const { data, error } = await supabaseClient
+    const { data: memberData, error: memberError } = await supabaseClient
       .from('group_members')
-      .select(`
-        group_id,
-        groups:group_id(
-          id, 
-          name, 
-          description, 
-          created_at, 
-          created_by
-        )
-      `)
+      .select('group_id')
       .eq('user_id', p_user_id);
     
-    if (error) throw error;
+    if (memberError) {
+      console.error('Error fetching group memberships:', memberError);
+      throw memberError;
+    }
     
-    // Extract group data
-    const groups = data.map(item => item.groups);
+    console.log('Found memberships:', memberData);
+    
+    if (!memberData || memberData.length === 0) {
+      console.log('No groups found for this user');
+      return new Response(JSON.stringify([]), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Get the group IDs
+    const groupIds = memberData.map(item => item.group_id);
+    
+    // Fetch the actual groups
+    const { data: groups, error: groupsError } = await supabaseClient
+      .from('groups')
+      .select('*')
+      .in('id', groupIds);
+    
+    if (groupsError) {
+      console.error('Error fetching groups:', groupsError);
+      throw groupsError;
+    }
+    
+    console.log('Groups fetched:', groups);
     
     return new Response(JSON.stringify(groups), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    console.error('Error in get_user_groups:', error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

@@ -100,8 +100,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const groupId = uuidv4();
     
     try {
+      console.log("Creating group:", name, description, groupId);
+      
       // Call the Edge Function to create a group
-      const { error: groupError } = await supabase.functions.invoke('create_group', {
+      const { data: groupData, error: groupError } = await supabase.functions.invoke('create_group', {
         body: {
           group_id: groupId,
           group_name: name, 
@@ -115,8 +117,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         return;
       }
       
+      console.log("Group created successfully:", groupData);
+      
       // Call the Edge Function to add the creator as a member
-      const { error: memberError } = await supabase.functions.invoke('add_group_member', {
+      const { data: memberData, error: memberError } = await supabase.functions.invoke('add_group_member', {
         body: {
           p_group_id: groupId,
           p_user_id: currentUser.id
@@ -128,6 +132,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         return;
       }
       
+      console.log("Added creator as member:", memberData);
+      
       const newGroup: Group = {
         id: groupId,
         name,
@@ -136,10 +142,15 @@ export const useAppStore = create<AppState>((set, get) => ({
         createdAt: new Date(),
       };
       
+      // Update the store with the new group
       set((state) => ({
         groups: [...state.groups, newGroup],
-        activeGroupId: newGroup.id,
       }));
+      
+      console.log("Group added to store:", newGroup);
+      
+      // Load all groups to ensure consistency
+      await get().loadGroups();
       
       return newGroup;
     } catch (error) {
@@ -244,24 +255,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { currentUser } = get();
     if (!currentUser) return;
 
-    const { data: friends, error } = await supabase
-      .from('friends')
-      .select('*')
-      .eq('user_id', currentUser.id);
+    try {
+      const { data: friends, error } = await supabase
+        .from('friends')
+        .select('*')
+        .eq('user_id', currentUser.id);
 
-    if (error) {
+      if (error) {
+        console.error('Error loading friends:', error);
+        return;
+      }
+
+      const users = friends.map((friend): User => ({
+        id: friend.id,
+        name: friend.friend_name,
+        email: friend.friend_email,
+        avatarUrl: friend.friend_avatar_url,
+      }));
+
+      set({ users });
+    } catch (error) {
       console.error('Error loading friends:', error);
-      return;
     }
-
-    const users = friends.map((friend): User => ({
-      id: friend.id,
-      name: friend.friend_name,
-      email: friend.friend_email,
-      avatarUrl: friend.friend_avatar_url,
-    }));
-
-    set({ users });
   },
   
   loadGroups: async () => {
@@ -269,8 +284,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!currentUser) return;
 
     try {
+      console.log("Loading groups for user:", currentUser.id);
+      
       // Get user's groups using Edge Function
-      const { data: userGroups, error: groupsError } = await supabase.functions.invoke('get_user_groups', {
+      const { data: groupsData, error: groupsError } = await supabase.functions.invoke('get_user_groups', {
         body: { p_user_id: currentUser.id }
       });
   
@@ -278,16 +295,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         console.error('Error loading groups:', groupsError);
         return;
       }
+      
+      console.log("Raw groups data:", groupsData);
   
-      if (!userGroups || userGroups.length === 0) {
+      if (!groupsData || !Array.isArray(groupsData) || groupsData.length === 0) {
+        console.log("No groups found for user");
         set({ groups: [] });
         return;
       }
   
       // Transform the data into the expected format
-      const groups = await Promise.all(userGroups.map(async (groupData) => {
+      const groups = await Promise.all(groupsData.map(async (groupData) => {
+        console.log("Processing group data:", groupData);
+        
         // Get group members using Edge Function
-        const { data: members, error: membersError } = await supabase.functions.invoke('get_group_members', {
+        const { data: membersData, error: membersError } = await supabase.functions.invoke('get_group_members', {
           body: { p_group_id: groupData.id }
         });
   
@@ -295,17 +317,20 @@ export const useAppStore = create<AppState>((set, get) => ({
           console.error(`Error loading members for group ${groupData.id}:`, membersError);
           return null;
         }
+        
+        console.log("Group members:", membersData);
   
         return {
           id: groupData.id,
           name: groupData.name,
           description: groupData.description,
-          members: members || [],
+          members: membersData || [],
           createdAt: new Date(groupData.created_at),
         } as Group;
       }));
   
       const validGroups = groups.filter(Boolean) as Group[];
+      console.log("Final groups to set in store:", validGroups);
       set({ groups: validGroups });
     } catch (error) {
       console.error('Error in loadGroups:', error);

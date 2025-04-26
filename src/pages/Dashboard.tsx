@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { GroupCard } from "@/components/GroupCard";
 import { CreateGroupForm } from "@/components/CreateGroupForm";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { PlusIcon, Loader2 } from "lucide-react";
+import { PlusIcon, Loader2, RefreshCw } from "lucide-react";
 import { FriendsList } from "@/components/FriendsList";
 import { toast } from "@/components/ui/use-toast";
 
@@ -15,28 +15,43 @@ export default function Dashboard() {
   const loadGroups = useAppStore((state) => state.loadGroups);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      await loadGroups();
+      console.log("Groups loaded:", groups);
+    } catch (error) {
+      console.error("Error loading groups:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load groups",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadData();
+    setIsRefreshing(false);
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        await loadGroups();
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load groups",
-          variant: "destructive",
-        });
-        console.error("Error loading groups:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (currentUser) {
       loadData();
     }
-  }, [currentUser, loadGroups]);
+  }, [currentUser]);
+
+  useEffect(() => {
+    // When dialog closes after creating a group, refresh the groups list
+    if (!isCreateDialogOpen) {
+      loadData();
+    }
+  }, [isCreateDialogOpen]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -52,17 +67,27 @@ export default function Dashboard() {
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800">My Groups</h2>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-purple-500 hover:bg-purple-600">
-                <PlusIcon className="h-4 w-4 mr-2" />
-                New Group
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <CreateGroupForm onComplete={() => setIsCreateDialogOpen(false)} />
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-purple-500 hover:bg-purple-600">
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  New Group
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <CreateGroupForm onComplete={() => setIsCreateDialogOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {isLoading ? (

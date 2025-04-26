@@ -22,10 +22,15 @@ serve(async (req) => {
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
     
+    console.log('Fetching members for group:', p_group_id);
+    
     // First get the current user's ID for reference
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     
-    if (userError) throw userError;
+    if (userError) {
+      console.error('Error getting user:', userError);
+      throw userError;
+    }
     
     // Get all members of the group
     const { data: memberIds, error: membersError } = await supabaseClient
@@ -33,7 +38,12 @@ serve(async (req) => {
       .select('user_id')
       .eq('group_id', p_group_id);
     
-    if (membersError) throw membersError;
+    if (membersError) {
+      console.error('Error fetching group members:', membersError);
+      throw membersError;
+    }
+    
+    console.log('Found members:', memberIds);
     
     // Initialize members array with current user
     let members = [{
@@ -48,12 +58,17 @@ serve(async (req) => {
       .filter(m => m.user_id !== user.id)
       .map(m => m.user_id);
     
+    console.log('Other member IDs:', otherMemberIds);
+    
     if (otherMemberIds.length > 0) {
+      // Try to find members in friends table
       const { data: friends, error: friendsError } = await supabaseClient
         .from('friends')
         .select('*')
         .eq('user_id', user.id)
         .in('id', otherMemberIds);
+      
+      console.log('Friends found:', friends);
       
       if (!friendsError && friends && friends.length > 0) {
         const friendMembers = friends.map(friend => ({
@@ -66,10 +81,13 @@ serve(async (req) => {
       }
     }
     
+    console.log('Final members list:', members);
+    
     return new Response(JSON.stringify(members), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    console.error('Error in get_group_members:', error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
