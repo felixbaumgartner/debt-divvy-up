@@ -8,7 +8,8 @@ import { DebtSummaryItem } from "@/components/DebtSummaryItem";
 import { AddExpenseForm } from "@/components/AddExpenseForm";
 import { Group, Expense } from "@/types";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, Users } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface GroupDetailsProps {
   group: Group;
@@ -18,10 +19,21 @@ interface GroupDetailsProps {
 export function GroupDetails({ group, onBack }: GroupDetailsProps) {
   const getGroupExpenses = useAppStore((state) => state.getGroupExpenses);
   const getGroupDebts = useAppStore((state) => state.getGroupDebts);
+  const currentUser = useAppStore((state) => state.currentUser);
   
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddExpenseDialogOpen, setIsAddExpenseDialogOpen] = useState(false);
+
+  // Ensure current user is considered as part of the group
+  const allMembers = [...group.members];
+  const hasSingleMember = allMembers.length <= 1;
+  
+  // Verify the current user is in the members list
+  useEffect(() => {
+    console.log("Group members:", group.members);
+    console.log("Current user:", currentUser);
+  }, [group.members, currentUser]);
 
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -41,7 +53,6 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
   
   const debts = getGroupDebts(group.id);
   const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const hasSingleMember = group.members.length <= 1;
   
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -89,6 +100,26 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
         </Dialog>
       </div>
 
+      {/* Group Members Section */}
+      <div className="mb-6 bg-white rounded-lg shadow p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Users className="h-5 w-5 text-purple-600" />
+          <h2 className="text-lg font-medium">Group Members ({allMembers.length})</h2>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {allMembers.map((member) => (
+            <div key={member.id} className="flex items-center gap-2 bg-purple-50 px-3 py-1 rounded-full">
+              <Avatar className="h-6 w-6">
+                <AvatarFallback className="bg-purple-200 text-purple-700 text-xs">
+                  {member.name?.slice(0, 2).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm">{member.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <p className="text-gray-500 text-sm">Total Group Spend</p>
@@ -99,7 +130,7 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <p className="text-gray-500 text-sm">Group Members</p>
           <p className="text-2xl font-bold text-purple-700">
-            {group.members.length}
+            {allMembers.length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-4 text-center">
