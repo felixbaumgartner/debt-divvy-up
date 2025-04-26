@@ -1,4 +1,3 @@
-
 import { StateCreator } from 'zustand';
 import { AppState, GroupsSlice } from '../types';
 import { Group } from '@/types';
@@ -197,7 +196,6 @@ export const createGroupsSlice: StateCreator<
   },
   deleteGroup: async (groupId: string) => {
     try {
-      // Use a raw query with JSONB syntax to update the deleted_at field
       const { error: deleteError } = await supabase
         .rpc('soft_delete_group', { 
           p_group_id: groupId,

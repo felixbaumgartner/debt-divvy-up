@@ -145,6 +145,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          deleted_at: string | null
           description: string | null
           id: string
           name: string
@@ -152,6 +153,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          deleted_at?: string | null
           description?: string | null
           id: string
           name: string
@@ -159,6 +161,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           name?: string
@@ -238,7 +241,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      soft_delete_group: {
+        Args: { p_group_id: string; p_deleted_at: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

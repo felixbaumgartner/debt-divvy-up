@@ -1,6 +1,6 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createAdminClient } from '../_shared/db-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,17 +19,13 @@ serve(async (req) => {
       throw new Error('Group ID is required');
     }
     
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    );
+    const supabaseAdmin = createAdminClient();
     
-    // Use a raw query to update the deleted_at field
-    const { data, error } = await supabaseClient
-      .from('groups')
-      .update({ deleted_at: deleted_at || new Date().toISOString() })
-      .eq('id', group_id);
+    // Call the soft_delete_group function
+    const { data, error } = await supabaseAdmin.rpc('soft_delete_group', {
+      p_group_id: group_id,
+      p_deleted_at: deleted_at || new Date().toISOString()
+    });
     
     if (error) {
       throw error;
