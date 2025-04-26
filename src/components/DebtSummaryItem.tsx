@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DebtSummary } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HandCoins } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -19,6 +19,13 @@ export function DebtSummaryItem({ debt }: DebtSummaryItemProps) {
 
   const fromUser = getUserById(debt.fromUserId);
   const toUser = getUserById(debt.toUserId);
+  
+  // Log for debugging
+  useEffect(() => {
+    console.log("Rendering DebtSummaryItem with debt:", debt);
+    console.log("FromUser:", fromUser);
+    console.log("ToUser:", toUser);
+  }, [debt, fromUser, toUser]);
   
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -59,9 +66,9 @@ export function DebtSummaryItem({ debt }: DebtSummaryItemProps) {
         <div className="flex flex-col space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <span className="font-medium text-gray-600">{fromUser?.name}</span>
+              <span className="font-medium text-gray-600">{fromUser?.name || 'Unknown user'}</span>
               <span className="text-sm text-gray-500">needs to pay</span>
-              <span className="font-medium text-gray-600">{toUser?.name}</span>
+              <span className="font-medium text-gray-600">{toUser?.name || 'Unknown user'}</span>
             </div>
             <Button 
               size="sm"

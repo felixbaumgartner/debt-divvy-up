@@ -235,18 +235,21 @@ export const createExpensesSlice: StateCreator<
     }
   },
   getGroupDebts: (groupId) => {
-    // We can't make this function async directly since it would change its signature
-    // Instead, we'll use the cached expenses and handle the async part elsewhere
-    const { users } = get();
-    const groupUsers = users.filter(user => {
-      // In a real implementation, this would filter by group membership
-      return true; // For now, we include all users
-    });
+    // Get all users associated with this group
+    const groupMembers = get().getGroupUsers(groupId);
+    console.log(`Calculating debts for ${groupMembers.length} group members:`, groupMembers);
     
-    // Use the cached expenses instead of fetching them again
-    const expenses = get().expenses.filter(expense => expense.groupId === groupId);
+    // Filter expenses for this group
+    const groupExpenses = get().expenses.filter(expense => expense.groupId === groupId);
+    console.log(`Found ${groupExpenses.length} expenses for group ${groupId}`);
     
-    const balances = calculateBalances(expenses, groupUsers);
-    return calculateDebts(balances, groupUsers);
+    // Calculate balances and debts
+    const balances = calculateBalances(groupExpenses, groupMembers);
+    console.log("Calculated balances:", balances);
+    
+    const debts = calculateDebts(balances, groupMembers);
+    console.log("Calculated debts:", debts);
+    
+    return debts;
   },
 });

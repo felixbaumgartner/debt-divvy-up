@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExpenseItem } from "@/components/ExpenseItem";
 import { DebtSummaryItem } from "@/components/DebtSummaryItem";
 import { AddExpenseForm } from "@/components/AddExpenseForm";
-import { Group, Expense } from "@/types";
+import { Group, Expense, DebtSummary } from "@/types";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PlusIcon, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,6 +24,7 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddExpenseDialogOpen, setIsAddExpenseDialogOpen] = useState(false);
+  const [debts, setDebts] = useState<DebtSummary[]>([]);
 
   // For clarity, use the members directly from the group object
   const allMembers = group.members || [];
@@ -42,6 +43,12 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
       try {
         const groupExpenses = await getGroupExpenses(group.id);
         setExpenses(groupExpenses);
+        console.log("Fetched expenses:", groupExpenses);
+        
+        // Calculate debts after expenses are loaded
+        const calculatedDebts = getGroupDebts(group.id);
+        console.log("Calculated debts:", calculatedDebts);
+        setDebts(calculatedDebts);
       } catch (error) {
         console.error("Failed to fetch expenses:", error);
       } finally {
@@ -50,9 +57,8 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
     };
     
     fetchExpenses();
-  }, [group.id, getGroupExpenses]);
+  }, [group.id, getGroupExpenses, getGroupDebts]);
   
-  const debts = getGroupDebts(group.id);
   const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   
   const formatter = new Intl.NumberFormat('en-US', {
@@ -65,6 +71,10 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
     // Refresh expenses
     const groupExpenses = await getGroupExpenses(group.id);
     setExpenses(groupExpenses);
+    
+    // Refresh debts
+    const calculatedDebts = getGroupDebts(group.id);
+    setDebts(calculatedDebts);
   };
 
   return (
@@ -180,7 +190,11 @@ export function GroupDetails({ group, onBack }: GroupDetailsProps) {
         </TabsContent>
         
         <TabsContent value="balances" className="space-y-4">
-          {debts.length === 0 ? (
+          {isLoading ? (
+            <div className="bg-gray-50 rounded-lg p-8 text-center">
+              <p className="text-gray-600">Loading balances...</p>
+            </div>
+          ) : debts.length === 0 ? (
             <div className="bg-gray-50 rounded-lg p-8 text-center">
               <p className="text-gray-600">
                 {expenses.length === 0 
