@@ -56,26 +56,29 @@ export function DebtSummaryItem({ debt }: DebtSummaryItemProps) {
   return (
     <Card className="mb-2">
       <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="font-medium">{fromUser?.name}</span>
-            <span className="text-gray-500">owes</span>
-            <span className="font-medium">{toUser?.name}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="font-bold text-purple-600">
-              {formatter.format(debt.amount)}
-            </span>
+        <div className="flex flex-col space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-gray-600">{fromUser?.name}</span>
+              <span className="text-sm text-gray-500">needs to pay</span>
+              <span className="font-medium text-gray-600">{toUser?.name}</span>
+            </div>
             <Button 
               size="sm"
               variant="outline"
               onClick={handleSettle}
               disabled={isSettling}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 border-purple-200"
             >
               <HandCoins className="h-4 w-4" />
-              {isSettling ? "Settling..." : "Settle"}
+              {isSettling ? "Settling..." : "Settle Up"}
             </Button>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Split amount:</span>
+            <span className="font-bold text-lg text-purple-600">
+              {formatter.format(debt.amount)}
+            </span>
           </div>
         </div>
       </CardContent>
