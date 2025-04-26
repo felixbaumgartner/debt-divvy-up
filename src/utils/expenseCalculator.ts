@@ -55,8 +55,8 @@ export function calculateDebts(balances: Balance[], users: User[]): DebtSummary[
   remainingBalances.sort((a, b) => b.amount - a.amount);
   
   // Find the creditors (positive balances) and debtors (negative balances)
-  const creditors = remainingBalances.filter(b => b.amount > 0);
-  const debtors = remainingBalances.filter(b => b.amount < 0);
+  const creditors = remainingBalances.filter(b => b.amount > 0.01); // Use small threshold to avoid floating point issues
+  const debtors = remainingBalances.filter(b => b.amount < -0.01); // Use small threshold to avoid floating point issues
   
   // Match debtors with creditors to settle debts
   let creditorIndex = 0;
@@ -66,9 +66,10 @@ export function calculateDebts(balances: Balance[], users: User[]): DebtSummary[
     const creditor = creditors[creditorIndex];
     const debtor = debtors[debtorIndex];
     
+    // Only process significant amounts (more than 1 cent)
     const amountToSettle = Math.min(creditor.amount, -debtor.amount);
     
-    if (amountToSettle > 0) {
+    if (amountToSettle > 0.01) {
       debts.push({
         fromUserId: debtor.userId,
         toUserId: creditor.userId,
@@ -79,8 +80,8 @@ export function calculateDebts(balances: Balance[], users: User[]): DebtSummary[
     creditor.amount -= amountToSettle;
     debtor.amount += amountToSettle;
     
-    if (Math.abs(creditor.amount) < 0.01) creditorIndex++;
-    if (Math.abs(debtor.amount) < 0.01) debtorIndex++;
+    if (creditor.amount < 0.01) creditorIndex++;
+    if (debtor.amount > -0.01) debtorIndex++;
   }
   
   return debts;
