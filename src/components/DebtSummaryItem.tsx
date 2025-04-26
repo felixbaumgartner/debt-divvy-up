@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DebtSummary } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
 import { useState } from "react";
-import { CheckCircle } from "lucide-react";
+import { HandCoins } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface DebtSummaryItemProps {
@@ -38,8 +38,8 @@ export function DebtSummaryItem({ debt }: DebtSummaryItemProps) {
       );
       
       toast({
-        title: "Payment recorded",
-        description: "The debt has been marked as settled.",
+        title: "Success",
+        description: "Payment has been recorded.",
       });
     } catch (error) {
       console.error("Error settling payment:", error);
@@ -73,7 +73,7 @@ export function DebtSummaryItem({ debt }: DebtSummaryItemProps) {
               disabled={isSettling}
               className="flex items-center gap-2"
             >
-              <CheckCircle className="h-4 w-4" />
+              <HandCoins className="h-4 w-4" />
               {isSettling ? "Settling..." : "Settle"}
             </Button>
           </div>
