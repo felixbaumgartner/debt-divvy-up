@@ -38,7 +38,7 @@ export const createFriendsSlice: StateCreator<
     };
     
     set((state) => ({
-      users: [...state.users, newUser],
+      users: [...state.users.filter(u => u.id !== newUser.id), newUser],
     }));
     
     return newUser;
@@ -65,10 +65,29 @@ export const createFriendsSlice: StateCreator<
         avatarUrl: friend.friend_avatar_url,
       }));
 
-      set({ users });
+      // Preserve any users that might have been added from group members
+      // but aren't in the friends list
+      const existingUsers = get().users;
+      const friendIds = new Set(users.map(u => u.id));
+      const otherUsers = existingUsers.filter(u => !friendIds.has(u.id));
+      
+      set({ users: [...users, ...otherUsers] });
     } catch (error) {
       console.error('Error loading friends:', error);
     }
+  },
+  addUserToList: (user) => {
+    if (!user || !user.id) return;
+    
+    set((state) => {
+      // Check if user already exists to avoid duplicates
+      if (state.users.some(u => u.id === user.id)) {
+        return state;
+      }
+      return {
+        users: [...state.users, user]
+      };
+    });
   },
   getUserById: (userId) => {
     const { users } = get();

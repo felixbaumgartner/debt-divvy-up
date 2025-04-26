@@ -155,6 +155,15 @@ export const createGroupsSlice: StateCreator<
           console.error(`Error loading members for group ${groupData.id}:`, membersError);
           return null;
         }
+
+        // Add all group members to the users list for global access
+        if (membersData && Array.isArray(membersData)) {
+          membersData.forEach(member => {
+            if (member && member.id) {
+              get().addUserToList(member);
+            }
+          });
+        }
   
         return {
           id: groupData.id,

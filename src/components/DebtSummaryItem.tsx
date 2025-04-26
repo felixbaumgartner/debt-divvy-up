@@ -53,13 +53,16 @@ export function DebtSummaryItem({ debt }: DebtSummaryItemProps) {
     }
   };
 
+  const fromUserDisplay = fromUser?.name || fromUser?.email || 'Unknown user';
+  const toUserDisplay = toUser?.name || toUser?.email || 'Unknown person';
+
   return (
     <Card className="mb-2">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="font-medium text-gray-600">
-              {fromUser?.name || 'Unknown user'} owes {formatter.format(debt.amount)} to {toUser?.name || toUser?.email || 'Unknown person'}
+              {fromUserDisplay} owes {formatter.format(debt.amount)} to {toUserDisplay}
             </span>
             <Button 
               size="sm"

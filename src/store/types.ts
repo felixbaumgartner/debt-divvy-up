@@ -4,6 +4,7 @@ import { Group, User, Expense, Payment, DebtSummary } from '@/types';
 export interface AuthSlice {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
+  getUserById: (userId: string) => User | undefined;
 }
 
 export interface GroupsSlice {
@@ -46,6 +47,7 @@ export interface FriendsSlice {
   addUser: (name: string, email?: string, avatarUrl?: string) => void;
   loadFriends: () => Promise<void>;
   getUserById: (userId: string) => User | undefined;
+  addUserToList: (user: User) => void;
 }
 
 export interface AppState extends 
