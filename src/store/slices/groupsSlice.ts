@@ -145,8 +145,12 @@ export const createGroupsSlice: StateCreator<
         set({ groups: [] });
         return;
       }
+      
+      // Filter out any deleted groups
+      const activeGroupsData = groupsData.filter(group => group && !group.deleted_at);
+      console.log(`Found ${groupsData.length} groups, ${activeGroupsData.length} active`);
   
-      const groups = await Promise.all(groupsData.map(async (groupData) => {
+      const groups = await Promise.all(activeGroupsData.map(async (groupData) => {
         const { data: membersData, error: membersError } = await supabase.functions.invoke('get_group_members', {
           body: { p_group_id: groupData.id }
         });
@@ -195,7 +199,7 @@ export const createGroupsSlice: StateCreator<
     try {
       const { error: deleteError } = await supabase
         .from('groups')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', groupId);
 
       if (deleteError) {

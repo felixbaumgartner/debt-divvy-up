@@ -47,11 +47,12 @@ serve(async (req) => {
     const groupIds = membershipData.map(membership => membership.group_id);
     console.log('User is a member of groups:', groupIds);
     
-    // Fetch the actual group data
+    // Fetch the actual group data, excluding deleted groups
     const { data: groupsData, error: groupsError } = await supabaseClient
       .from('groups')
       .select('*')
-      .in('id', groupIds);
+      .in('id', groupIds)
+      .is('deleted_at', null); // Only return groups that are not deleted
     
     if (groupsError) {
       console.error('Error fetching groups:', groupsError);
