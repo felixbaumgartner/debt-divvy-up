@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { Group, User, Expense, Payment, DebtSummary } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -102,37 +101,40 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       console.log("Creating group:", name, description, groupId);
       
-      // Call the Edge Function to create a group
-      const { data: groupData, error: groupError } = await supabase.functions.invoke('create_group', {
-        body: {
-          group_id: groupId,
-          group_name: name, 
-          group_description: description || null,
-          creator_id: currentUser.id
-        }
-      });
+      // Create the group
+      const { error: groupError } = await supabase
+        .from('groups')
+        .insert({
+          id: groupId,
+          name,
+          description,
+          created_by: currentUser.id
+        });
         
       if (groupError) {
         console.error('Error creating group:', groupError);
-        return;
+        throw groupError;
       }
       
-      console.log("Group created successfully:", groupData);
+      console.log("Group created successfully");
       
-      // Call the Edge Function to add the creator as a member
-      const { data: memberData, error: memberError } = await supabase.functions.invoke('add_group_member', {
-        body: {
-          p_group_id: groupId,
-          p_user_id: currentUser.id
-        }
-      });
+      // Add creator as member
+      const { error: memberError } = await supabase
+        .from('group_members')
+        .insert({
+          group_id: groupId,
+          user_id: currentUser.id
+        });
         
       if (memberError) {
         console.error('Error adding member to group:', memberError);
-        return;
+        throw memberError;
       }
       
-      console.log("Added creator as member:", memberData);
+      console.log("Added creator as member");
+      
+      // Reload all groups to ensure consistency
+      await get().loadGroups();
       
       const newGroup: Group = {
         id: groupId,
@@ -142,15 +144,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         createdAt: new Date(),
       };
       
-      // Update the store with the new group
       set((state) => ({
         groups: [...state.groups, newGroup],
       }));
-      
-      console.log("Group added to store:", newGroup);
-      
-      // Load all groups to ensure consistency
-      await get().loadGroups();
       
       return newGroup;
     } catch (error) {

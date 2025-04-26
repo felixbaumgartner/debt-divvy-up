@@ -24,43 +24,45 @@ serve(async (req) => {
     
     console.log('Fetching groups for user:', p_user_id);
     
-    // Get groups where the user is a member
-    const { data: memberData, error: memberError } = await supabaseClient
-      .from('group_members')
-      .select('group_id')
-      .eq('user_id', p_user_id);
+    // First get groups where the user is a member
+    const { data: memberGroups, error: memberError } = await supabaseClient
+      .from('groups')
+      .select('*')
+      .eq('created_by', p_user_id);
     
     if (memberError) {
-      console.error('Error fetching group memberships:', memberError);
+      console.error('Error fetching created groups:', memberError);
       throw memberError;
     }
     
-    console.log('Found memberships:', memberData);
+    console.log('Found created groups:', memberGroups);
     
-    if (!memberData || memberData.length === 0) {
-      console.log('No groups found for this user');
-      return new Response(JSON.stringify([]), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    // Get the group IDs
-    const groupIds = memberData.map(item => item.group_id);
-    
-    // Fetch the actual groups
-    const { data: groups, error: groupsError } = await supabaseClient
+    // Then get groups where the user is a member through group_members
+    const { data: joinedGroups, error: joinedError } = await supabaseClient
       .from('groups')
       .select('*')
-      .in('id', groupIds);
+      .in('id', (
+        await supabaseClient
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', p_user_id)
+      ).data?.map(m => m.group_id) || []);
     
-    if (groupsError) {
-      console.error('Error fetching groups:', groupsError);
-      throw groupsError;
+    if (joinedError) {
+      console.error('Error fetching joined groups:', joinedError);
+      throw joinedError;
     }
     
-    console.log('Groups fetched:', groups);
+    console.log('Found joined groups:', joinedGroups);
     
-    return new Response(JSON.stringify(groups), {
+    // Combine and deduplicate groups
+    const allGroups = [...memberGroups, ...joinedGroups].filter((group, index, self) =>
+      index === self.findIndex((g) => g.id === group.id)
+    );
+    
+    console.log('All groups:', allGroups);
+    
+    return new Response(JSON.stringify(allGroups), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
