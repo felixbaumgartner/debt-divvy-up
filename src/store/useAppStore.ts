@@ -91,7 +91,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   createGroup: (name, description) => {
-    const { currentUser, users } = get();
+    const { currentUser } = get();
+    
+    if (!currentUser) return;
     
     const newGroup: Group = {
       id: uuidv4(),
