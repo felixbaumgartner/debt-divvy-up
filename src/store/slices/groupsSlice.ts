@@ -89,9 +89,39 @@ export const createGroupsSlice: StateCreator<
       const group = get().groups.find(g => g.id === groupId);
       const currentUser = get().currentUser;
       
-      if (!user || !group || !currentUser) return;
+      if (!user || !group || !currentUser) {
+        console.error('Missing required data:', { user, group, currentUser });
+        toast({
+          title: "Error",
+          description: "Missing user or group data",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // First add the user to the group in the database
+      console.log('Adding user to group:', { userId, groupId });
+
+      // First try to ensure the user exists in the database
+      // We'll create a profile entry for this friend if needed
+      try {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: userId,
+            name: user.name,
+            email: user.email
+          }, { onConflict: 'id' });
+
+        if (profileError) {
+          console.log('Note: Could not create user profile:', profileError);
+          // Continue anyway as the user might already exist
+        }
+      } catch (profileErr) {
+        console.warn('Could not ensure user profile exists:', profileErr);
+        // Continue anyway as the user might already exist
+      }
+      
+      // Now add the user to the group in the database
       const { error } = await supabase
         .functions.invoke('add_group_member', {
           body: {
@@ -104,27 +134,38 @@ export const createGroupsSlice: StateCreator<
         console.error('Error adding user to group:', error);
         toast({
           title: "Error",
-          description: "Failed to add user to group",
+          description: "Failed to add user to group. Database error occurred.",
           variant: "destructive",
         });
         return;
       }
 
-      // Send email notification if the user has an email
+      // If we got here, the user was added to the group successfully
+      // Now send email notification if the user has an email
       if (user.email) {
         try {
-          await supabase.functions.invoke('send-group-invite', {
+          console.log('Sending email notification to:', user.email);
+          const emailResponse = await supabase.functions.invoke('send-group-invite', {
             body: {
-              friendName: user.name,
+              friendName: user.name || 'there',
               friendEmail: user.email,
               groupName: group.name,
-              inviterName: currentUser.name
+              inviterName: currentUser.name || 'Someone'
             }
           });
+          
+          console.log('Email sending response:', emailResponse);
+          
+          if (emailResponse.error) {
+            console.error('Error from email service:', emailResponse.error);
+            // Don't block the group addition if email fails, but log it
+          }
         } catch (emailError) {
-          console.error('Error sending invitation email:', emailError);
+          console.error('Exception sending invitation email:', emailError);
           // Don't block the group addition if email fails
         }
+      } else {
+        console.log('No email available for user, skipping notification');
       }
 
       // Update local state
