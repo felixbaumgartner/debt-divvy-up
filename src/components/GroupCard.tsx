@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Group } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
+import { useNavigate } from "react-router-dom";
 
 interface GroupCardProps {
   group: Group;
@@ -10,14 +11,21 @@ interface GroupCardProps {
 
 export function GroupCard({ group }: GroupCardProps) {
   const setActiveGroup = useAppStore((state) => state.setActiveGroup);
+  const navigate = useNavigate();
 
   const handleSelectGroup = () => {
     console.log("Selecting group:", group.id);
     setActiveGroup(group.id);
+    
+    // Force a re-render by navigating to the same page
+    navigate("/", { replace: true });
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={handleSelectGroup}>
+    <Card 
+      className="hover:shadow-md transition-shadow cursor-pointer" 
+      onClick={handleSelectGroup}
+    >
       <CardHeader className="pb-2">
         <CardTitle className="text-xl text-purple-700">{group.name}</CardTitle>
         <CardDescription>{group.description}</CardDescription>

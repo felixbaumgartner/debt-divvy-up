@@ -1,8 +1,8 @@
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Expense } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
+import { useEffect, useState } from "react";
 
 interface ExpenseItemProps {
   expense: Expense;
@@ -10,7 +10,19 @@ interface ExpenseItemProps {
 
 export function ExpenseItem({ expense }: ExpenseItemProps) {
   const getUserById = useAppStore((state) => state.getUserById);
-  const payer = getUserById(expense.paidBy);
+  const currentUser = useAppStore((state) => state.currentUser);
+  const [payer, setPayer] = useState<any>(null);
+  
+  useEffect(() => {
+    // Check if the expense was paid by the current user
+    if (expense.paidBy === currentUser?.id) {
+      setPayer(currentUser);
+    } else {
+      // Otherwise try to get the user from the store
+      const user = getUserById(expense.paidBy);
+      setPayer(user);
+    }
+  }, [expense.paidBy, getUserById, currentUser]);
   
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -24,13 +36,13 @@ export function ExpenseItem({ expense }: ExpenseItemProps) {
           <Avatar className="h-10 w-10 mr-3">
             <AvatarImage src={payer?.avatarUrl} />
             <AvatarFallback className="bg-purple-200 text-purple-800">
-              {payer?.name?.substring(0, 2).toUpperCase() || 'UN'}
+              {payer?.name ? payer.name.substring(0, 2).toUpperCase() : 'UN'}
             </AvatarFallback>
           </Avatar>
           <div>
             <p className="font-medium">{expense.description}</p>
             <p className="text-sm text-gray-500">
-              Paid by {payer?.name || 'Unknown'} • {expense.date.toLocaleDateString()}
+              Paid by {payer?.name || 'Unknown'} • {new Date(expense.date).toLocaleDateString()}
             </p>
           </div>
         </div>

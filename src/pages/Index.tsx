@@ -13,13 +13,16 @@ const Index = () => {
   const groups = useAppStore((state) => state.groups);
   const setActiveGroup = useAppStore((state) => state.setActiveGroup);
   const loadGroups = useAppStore((state) => state.loadGroups);
+  const loadFriends = useAppStore((state) => state.loadFriends);
   
-  // Reload groups when the component mounts to ensure data is fresh
+  // Reload groups and friends when the component mounts to ensure data is fresh
   useEffect(() => {
     if (currentUser) {
+      console.log("Loading groups and friends");
       loadGroups();
+      loadFriends();
     }
-  }, [currentUser, loadGroups]);
+  }, [currentUser, loadGroups, loadFriends]);
   
   // Redirect to auth page if not logged in
   if (!currentUser) {
