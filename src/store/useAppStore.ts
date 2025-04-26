@@ -17,6 +17,16 @@ const useAppStoreBase = create<AppState>()((...a) => ({
 
 export const useAppStore = createSelectors(useAppStoreBase);
 
+// Enhanced logging for debugging
+useAppStore.subscribe((state, prevState) => {
+  if (state.currentUser !== prevState.currentUser) {
+    console.log("User state changed:", state.currentUser);
+  }
+  if (state.activeGroupId !== prevState.activeGroupId) {
+    console.log("Active group changed:", state.activeGroupId);
+  }
+});
+
 // Set up auth state change listener
 supabase.auth.onAuthStateChange((event, session) => {
   if (session?.user) {

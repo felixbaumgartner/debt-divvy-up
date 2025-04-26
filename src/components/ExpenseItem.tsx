@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Expense } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface ExpenseItemProps {
   expense: Expense;
@@ -12,6 +13,7 @@ interface ExpenseItemProps {
 export function ExpenseItem({ expense }: ExpenseItemProps) {
   const getUserById = useAppStore((state) => state.getUserById);
   const [payer, setPayer] = useState<any>(null);
+  const navigate = useNavigate();
   
   useEffect(() => {
     const user = getUserById(expense.paidBy);
@@ -28,8 +30,19 @@ export function ExpenseItem({ expense }: ExpenseItemProps) {
     currency: 'USD',
   });
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+    console.log("Expense card clicked:", expense.id);
+    // You can navigate to a detailed expense view here if needed
+    // For now, just log the click
+  };
+
   return (
-    <Card className="mb-2">
+    <Card 
+      className="mb-2 cursor-pointer hover:bg-gray-50 transition-colors"
+      onClick={handleCardClick}
+    >
       <CardContent className="p-4 flex items-center justify-between">
         <div className="flex items-center">
           <Avatar className="h-10 w-10 mr-3">
