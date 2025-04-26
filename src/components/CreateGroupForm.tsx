@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppStore } from "@/store/useAppStore";
 import { FormEvent, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 interface CreateGroupFormProps {
   onComplete?: () => void;
@@ -15,20 +17,38 @@ export function CreateGroupForm({ onComplete }: CreateGroupFormProps) {
   const createGroup = useAppStore((state) => state.createGroup);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!name) return;
 
-    createGroup(name, description);
+    setIsLoading(true);
+    try {
+      await createGroup(name, description);
+      
+      // Reset form
+      setName("");
+      setDescription("");
+      
+      toast({
+        title: "Success",
+        description: "Group created successfully",
+      });
 
-    // Reset form
-    setName("");
-    setDescription("");
-
-    if (onComplete) {
-      onComplete();
+      if (onComplete) {
+        onComplete();
+      }
+    } catch (error) {
+      console.error("Error creating group:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create group",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -47,6 +67,7 @@ export function CreateGroupForm({ onComplete }: CreateGroupFormProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
           
@@ -58,11 +79,23 @@ export function CreateGroupForm({ onComplete }: CreateGroupFormProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
+              disabled={isLoading}
             />
           </div>
           
-          <Button type="submit" className="w-full bg-purple-500 hover:bg-purple-600">
-            Create Group
+          <Button 
+            type="submit" 
+            className="w-full bg-purple-500 hover:bg-purple-600"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create Group"
+            )}
           </Button>
         </form>
       </CardContent>

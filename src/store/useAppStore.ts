@@ -17,7 +17,7 @@ interface AppState {
   // Actions
   setCurrentUser: (user: User | null) => void;
   addUser: (name: string, email?: string, avatarUrl?: string) => void;
-  createGroup: (name: string, description?: string) => void;
+  createGroup: (name: string, description?: string) => Promise<Group | undefined>;
   addUserToGroup: (groupId: string, userId: string) => void;
   removeUserFromGroup: (groupId: string, userId: string) => void;
   addExpense: (
@@ -38,6 +38,7 @@ interface AppState {
   settlePayment: (paymentId: string) => void;
   setActiveGroup: (groupId: string | null) => void;
   loadFriends: () => Promise<void>;
+  loadGroups: () => Promise<void>;
   
   // Computed
   getGroupExpenses: (groupId: string) => Expense[];
@@ -90,13 +91,45 @@ export const useAppStore = create<AppState>((set, get) => ({
     return newUser;
   },
   
-  createGroup: (name, description) => {
+  createGroup: async (name, description) => {
     const { currentUser } = get();
     
     if (!currentUser) return;
     
+    const groupId = uuidv4();
+    
+    // Create the group in Supabase
+    const { data: groupData, error } = await supabase
+      .from('groups')
+      .insert({
+        id: groupId,
+        name,
+        description,
+        created_by: currentUser.id,
+      })
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error creating group:', error);
+      return;
+    }
+    
+    // Add the current user as a member of the group
+    const { error: memberError } = await supabase
+      .from('group_members')
+      .insert({
+        group_id: groupId,
+        user_id: currentUser.id
+      });
+      
+    if (memberError) {
+      console.error('Error adding member to group:', memberError);
+      return;
+    }
+    
     const newGroup: Group = {
-      id: uuidv4(),
+      id: groupId,
       name,
       description,
       members: [currentUser],
@@ -227,6 +260,87 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ users });
   },
   
+  loadGroups: async () => {
+    const { currentUser } = get();
+    if (!currentUser) return;
+
+    // Get groups where the user is a member
+    const { data: groupMembers, error: memberError } = await supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', currentUser.id);
+
+    if (memberError) {
+      console.error('Error loading group members:', memberError);
+      return;
+    }
+
+    if (!groupMembers.length) {
+      set({ groups: [] });
+      return;
+    }
+
+    const groupIds = groupMembers.map(member => member.group_id);
+
+    // Get group details
+    const { data: groups, error: groupsError } = await supabase
+      .from('groups')
+      .select('*')
+      .in('id', groupIds);
+
+    if (groupsError) {
+      console.error('Error loading groups:', groupsError);
+      return;
+    }
+
+    // For each group, get its members
+    const groupsWithMembers = await Promise.all(groups.map(async (group) => {
+      const { data: members, error: membersError } = await supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', group.id);
+
+      if (membersError) {
+        console.error(`Error loading members for group ${group.id}:`, membersError);
+        return null;
+      }
+
+      // Get user details for each member
+      const memberIds = members.map(m => m.user_id);
+      let memberUsers: User[] = [currentUser];
+
+      if (memberIds.length > 1) {
+        // Get friends who are members of this group
+        const { data: friends, error: friendsError } = await supabase
+          .from('friends')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .in('id', memberIds.filter(id => id !== currentUser.id));
+
+        if (!friendsError && friends) {
+          const friendUsers = friends.map(friend => ({
+            id: friend.id,
+            name: friend.friend_name,
+            email: friend.friend_email,
+            avatarUrl: friend.friend_avatar_url,
+          }));
+          memberUsers = [...memberUsers, ...friendUsers];
+        }
+      }
+
+      return {
+        id: group.id,
+        name: group.name,
+        description: group.description,
+        members: memberUsers,
+        createdAt: new Date(group.created_at),
+      } as Group;
+    }));
+
+    const validGroups = groupsWithMembers.filter(Boolean) as Group[];
+    set({ groups: validGroups });
+  },
+  
   // Computed values
   getGroupExpenses: (groupId) => {
     const { expenses } = get();
@@ -263,6 +377,10 @@ supabase.auth.onAuthStateChange((event, session) => {
       avatarUrl: session.user.user_metadata.avatar_url,
     };
     useAppStore.getState().setCurrentUser(user);
+    
+    // Load user data
+    useAppStore.getState().loadFriends();
+    useAppStore.getState().loadGroups();
   } else {
     useAppStore.getState().setCurrentUser(null);
   }

@@ -1,24 +1,49 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { GroupCard } from "@/components/GroupCard";
 import { CreateGroupForm } from "@/components/CreateGroupForm";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, Loader2 } from "lucide-react";
 import { FriendsList } from "@/components/FriendsList";
+import { toast } from "@/components/ui/use-toast";
 
 export default function Dashboard() {
   const groups = useAppStore((state) => state.groups);
   const currentUser = useAppStore((state) => state.currentUser);
+  const loadGroups = useAppStore((state) => state.loadGroups);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        await loadGroups();
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load groups",
+          variant: "destructive",
+        });
+        console.error("Error loading groups:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser, loadGroups]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-purple-700">Debt Divvy-Up</h1>
-          <p className="text-gray-600">Welcome back, {currentUser.name}</p>
+          <p className="text-gray-600">Welcome back, {currentUser?.name}</p>
         </div>
       </div>
 
@@ -40,7 +65,11 @@ export default function Dashboard() {
           </Dialog>
         </div>
 
-        {groups.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center p-12">
+            <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+          </div>
+        ) : groups.length === 0 ? (
           <div className="bg-gray-50 rounded-lg p-8 text-center">
             <p className="text-gray-600 mb-4">You don't have any groups yet.</p>
             <Button 
