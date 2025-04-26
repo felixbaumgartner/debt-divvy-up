@@ -190,11 +190,12 @@ export const createExpensesSlice: StateCreator<
         paidBy: expense.paid_by,
         participants: expense.expense_participants.map(p => p.user_id),
         date: new Date(expense.created_at),
-        split: expense.split,
+        // Ensure split is either "equal" or "custom", defaulting to "equal" if it doesn't match
+        split: (expense.split === "equal" || expense.split === "custom") ? expense.split : "equal" as "equal" | "custom",
         shares: expense.expense_participants.reduce((acc, p) => {
           acc[p.user_id] = p.share;
           return acc;
-        }, {})
+        }, {} as Record<string, number>)
       }));
 
       return transformedExpenses;
