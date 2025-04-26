@@ -17,8 +17,10 @@ export default function ExpenseDetails() {
   
   const expenses = useAppStore((state) => state.expenses);
   const getUserById = useAppStore((state) => state.getUserById);
+  const currentUser = useAppStore((state) => state.currentUser);
   const activeGroupId = useAppStore((state) => state.activeGroupId);
   const setActiveGroup = useAppStore((state) => state.setActiveGroup);
+  const users = useAppStore((state) => state.users);
   
   useEffect(() => {
     // Find the expense
@@ -32,16 +34,24 @@ export default function ExpenseDetails() {
       }
       
       // Get the payer
-      const user = getUserById(foundExpense.paidBy);
-      if (user) {
-        setPayer(user);
+      const payerUser = getUserById(foundExpense.paidBy);
+      setPayer(payerUser || currentUser); // Fallback to current user if payer not found
+      
+      // Get participants including the current user
+      const allParticipants = foundExpense.participants.map(userId => {
+        const user = getUserById(userId);
+        return user || (userId === currentUser?.id ? currentUser : null);
+      }).filter(Boolean);
+
+      // Make sure current user is included if they're a participant
+      if (foundExpense.participants.includes(currentUser?.id || '') && 
+          !allParticipants.find(p => p.id === currentUser?.id)) {
+        allParticipants.unshift(currentUser);
       }
       
-      // Get participants
-      const parts = foundExpense.participants.map(userId => getUserById(userId)).filter(Boolean);
-      setParticipants(parts);
+      setParticipants(allParticipants);
     }
-  }, [expenseId, expenses, getUserById, activeGroupId, setActiveGroup]);
+  }, [expenseId, expenses, getUserById, activeGroupId, setActiveGroup, currentUser]);
   
   if (!expense) {
     return (
@@ -108,7 +118,7 @@ export default function ExpenseDetails() {
                         {payer?.name ? payer.name.substring(0, 2).toUpperCase() : 'UN'}
                       </AvatarFallback>
                     </Avatar>
-                    <span>{payer.name}</span>
+                    <span className="font-medium">{payer.name}</span>
                   </>
                 )}
               </div>
