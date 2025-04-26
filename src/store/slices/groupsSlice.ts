@@ -102,7 +102,6 @@ export const createGroupsSlice: StateCreator<
       console.log('Adding user to group:', { userId, groupId });
 
       // First try to ensure the user exists in the database
-      // We'll create a profile entry for this friend if needed
       try {
         const { error: profileError } = await supabase
           .from('profiles')
@@ -154,15 +153,23 @@ export const createGroupsSlice: StateCreator<
             }
           });
           
-          console.log('Email sending response:', emailResponse);
-          
           if (emailResponse.error) {
-            console.error('Error from email service:', emailResponse.error);
-            // Don't block the group addition if email fails, but log it
+            console.error('Error sending invitation email:', emailResponse.error);
+            toast({
+              title: "Warning",
+              description: "User added to group but invitation email could not be sent",
+              variant: "destructive",
+            });
+          } else {
+            console.log('Email notification sent successfully');
           }
         } catch (emailError) {
           console.error('Exception sending invitation email:', emailError);
-          // Don't block the group addition if email fails
+          toast({
+            title: "Warning",
+            description: "User added to group but invitation email could not be sent",
+            variant: "destructive",
+          });
         }
       } else {
         console.log('No email available for user, skipping notification');
