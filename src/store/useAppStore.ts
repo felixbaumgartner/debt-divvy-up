@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { Group, User, Expense, Payment, DebtSummary } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -96,10 +97,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     if (!currentUser) return;
     
-    const groupId = uuidv4();
-    
     try {
-      console.log("Creating group:", name, description, groupId);
+      console.log("Creating group:", name, description);
+      
+      // Create group with a generated UUID
+      const groupId = uuidv4();
       
       // Create the group
       const { error: groupError } = await supabase
@@ -133,9 +135,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       
       console.log("Added creator as member");
       
-      // Reload all groups to ensure consistency
-      await get().loadGroups();
-      
+      // Prepare group object for the local state
       const newGroup: Group = {
         id: groupId,
         name,
@@ -144,9 +144,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         createdAt: new Date(),
       };
       
+      // Update local state
       set((state) => ({
         groups: [...state.groups, newGroup],
       }));
+      
+      // Reload all groups to ensure consistency with server
+      await get().loadGroups();
       
       return newGroup;
     } catch (error) {
@@ -294,7 +298,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       
       console.log("Raw groups data:", groupsData);
   
-      if (!groupsData || !Array.isArray(groupsData) || groupsData.length === 0) {
+      if (!groupsData || !Array.isArray(groupsData)) {
         console.log("No groups found for user");
         set({ groups: [] });
         return;

@@ -24,45 +24,20 @@ serve(async (req) => {
     
     console.log('Fetching groups for user:', p_user_id);
     
-    // First get groups where the user is a member
-    const { data: memberGroups, error: memberError } = await supabaseClient
+    // Use the RLS policy we created to fetch all groups the user has access to
+    // This works for both created groups and joined groups
+    const { data: userGroups, error } = await supabaseClient
       .from('groups')
-      .select('*')
-      .eq('created_by', p_user_id);
+      .select('*');
     
-    if (memberError) {
-      console.error('Error fetching created groups:', memberError);
-      throw memberError;
+    if (error) {
+      console.error('Error fetching groups:', error);
+      throw error;
     }
     
-    console.log('Found created groups:', memberGroups);
+    console.log('Found groups for user:', userGroups?.length || 0);
     
-    // Then get groups where the user is a member through group_members
-    const { data: joinedGroups, error: joinedError } = await supabaseClient
-      .from('groups')
-      .select('*')
-      .in('id', (
-        await supabaseClient
-          .from('group_members')
-          .select('group_id')
-          .eq('user_id', p_user_id)
-      ).data?.map(m => m.group_id) || []);
-    
-    if (joinedError) {
-      console.error('Error fetching joined groups:', joinedError);
-      throw joinedError;
-    }
-    
-    console.log('Found joined groups:', joinedGroups);
-    
-    // Combine and deduplicate groups
-    const allGroups = [...memberGroups, ...joinedGroups].filter((group, index, self) =>
-      index === self.findIndex((g) => g.id === group.id)
-    );
-    
-    console.log('All groups:', allGroups);
-    
-    return new Response(JSON.stringify(allGroups), {
+    return new Response(JSON.stringify(userGroups || []), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
