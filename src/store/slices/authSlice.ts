@@ -11,7 +11,7 @@ export const createAuthSlice: StateCreator<
   currentUser: null,
   setCurrentUser: (user) => set({ currentUser: user }),
   getUserById: (userId) => {
-    const { friends } = get();
+    const { users } = get();
     const { currentUser } = get();
     
     // Check if the user ID matches the current user
@@ -20,6 +20,6 @@ export const createAuthSlice: StateCreator<
     }
     
     // Otherwise, search among friends
-    return friends.find(friend => friend.id === userId);
+    return users.find(user => user.id === userId);
   },
 });
