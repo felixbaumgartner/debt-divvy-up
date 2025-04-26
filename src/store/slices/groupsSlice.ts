@@ -83,20 +83,72 @@ export const createGroupsSlice: StateCreator<
       throw error;
     }
   },
-  addUserToGroup: (groupId, userId) => {
-    set((state) => {
-      const user = state.users.find(u => u.id === userId);
-      if (!user) return state;
+  addUserToGroup: async (groupId, userId) => {
+    try {
+      const user = get().users.find(u => u.id === userId);
+      const group = get().groups.find(g => g.id === groupId);
+      const currentUser = get().currentUser;
       
-      return {
+      if (!user || !group || !currentUser) return;
+
+      // First add the user to the group in the database
+      const { error } = await supabase
+        .functions.invoke('add_group_member', {
+          body: {
+            p_group_id: groupId,
+            p_user_id: userId
+          }
+        });
+
+      if (error) {
+        console.error('Error adding user to group:', error);
+        toast({
+          title: "Error",
+          description: "Failed to add user to group",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Send email notification if the user has an email
+      if (user.email) {
+        try {
+          await supabase.functions.invoke('send-group-invite', {
+            body: {
+              friendName: user.name,
+              friendEmail: user.email,
+              groupName: group.name,
+              inviterName: currentUser.name
+            }
+          });
+        } catch (emailError) {
+          console.error('Error sending invitation email:', emailError);
+          // Don't block the group addition if email fails
+        }
+      }
+
+      // Update local state
+      set((state) => ({
         groups: state.groups.map(g => {
           if (g.id === groupId && !g.members.some(m => m.id === userId)) {
             return { ...g, members: [...g.members, user] };
           }
           return g;
         }),
-      };
-    });
+      }));
+
+      toast({
+        title: "Success",
+        description: `${user.name} has been added to the group`,
+      });
+    } catch (error) {
+      console.error('Error in addUserToGroup:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add user to group",
+        variant: "destructive",
+      });
+    }
   },
   removeUserFromGroup: (groupId, userId) => {
     set((state) => ({
