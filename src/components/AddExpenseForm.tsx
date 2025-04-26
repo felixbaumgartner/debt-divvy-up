@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,7 +28,6 @@ export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  // Ensure friends are loaded
   useEffect(() => {
     const fetchFriends = async () => {
       await loadFriends();
@@ -60,7 +58,6 @@ export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
         selectedParticipants
       );
 
-      // Reset form
       setDescription("");
       setAmount("");
       setPaidBy(currentUser?.id || "");
@@ -94,13 +91,19 @@ export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
     }
   };
 
-  // Create a combined list of participants including current user and group members
+  const calculateSplitAmount = () => {
+    if (!amount || selectedParticipants.length === 0) return 0;
+    return parseFloat(amount) / selectedParticipants.length;
+  };
+
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  });
+
   const allParticipants = [
-    // Include current user if available
     ...(currentUser ? [currentUser] : []),
-    // Include all other users (both group members and friends)
     ...users.filter(user => 
-      // Don't duplicate the current user
       user.id !== currentUser?.id
     )
   ];
@@ -156,17 +159,29 @@ export function AddExpenseForm({ group, onComplete }: AddExpenseFormProps) {
             <Label>Split between</Label>
             <div className="border rounded-md p-3 space-y-2">
               {allParticipants.map((member) => (
-                <div key={member.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`user-${member.id}`}
-                    checked={selectedParticipants.includes(member.id)}
-                    onCheckedChange={() => toggleParticipant(member.id)}
-                  />
-                  <Label htmlFor={`user-${member.id}`} className="cursor-pointer">
-                    {member.name}
-                  </Label>
+                <div key={member.id} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`user-${member.id}`}
+                      checked={selectedParticipants.includes(member.id)}
+                      onCheckedChange={() => toggleParticipant(member.id)}
+                    />
+                    <Label htmlFor={`user-${member.id}`} className="cursor-pointer">
+                      {member.name}
+                    </Label>
+                  </div>
+                  {selectedParticipants.includes(member.id) && amount && (
+                    <span className="text-sm text-purple-600 font-medium">
+                      {formatter.format(calculateSplitAmount())}
+                    </span>
+                  )}
                 </div>
               ))}
+              {selectedParticipants.length > 0 && amount && (
+                <div className="pt-2 mt-2 border-t text-sm text-gray-500">
+                  Split equally: {formatter.format(calculateSplitAmount())} per person
+                </div>
+              )}
             </div>
           </div>
           
