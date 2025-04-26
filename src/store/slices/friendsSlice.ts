@@ -1,8 +1,10 @@
+
 import { StateCreator } from 'zustand';
 import { AppState, FriendsSlice } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
 import { toast } from '@/components/ui/use-toast';
+import { v4 as uuidv4 } from 'uuid';
 
 export const createFriendsSlice: StateCreator<
   AppState,
@@ -30,9 +32,13 @@ export const createFriendsSlice: StateCreator<
         }
 
         if (!existingProfile) {
+          // Generate a UUID for the new profile
+          const profileId = uuidv4();
+          
           const { data: profile, error: createProfileError } = await supabase
             .from('profiles')
             .insert({
+              id: profileId, // Include the required id field
               name,
               email,
               avatar_url: avatarUrl,
