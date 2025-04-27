@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
@@ -146,11 +145,11 @@ export function FriendsList() {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
-                    variant="outline" 
+                    variant="destructive" 
                     size="icon"
-                    className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
+                    className="text-white bg-red-500 hover:bg-red-600 border-red-600 hover:border-red-700 transition-colors duration-200 ease-in-out group"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
