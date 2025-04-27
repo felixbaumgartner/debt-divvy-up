@@ -1,11 +1,12 @@
-
 import { useAppStore } from "@/store/useAppStore";
 import { Navigate, Link } from "react-router-dom";
 import Dashboard from "./Dashboard";
 import { GroupDetails } from "@/components/GroupDetails";
 import { Button } from "@/components/ui/button";
-import { UserRound } from "lucide-react";
+import { UserRound, LogOut } from "lucide-react";
 import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
   const currentUser = useAppStore((state) => state.currentUser);
@@ -15,12 +16,10 @@ const Index = () => {
   const loadGroups = useAppStore((state) => state.loadGroups);
   const loadFriends = useAppStore((state) => state.loadFriends);
   
-  // Monitor activeGroupId changes
   useEffect(() => {
     console.log("Active group ID changed to:", activeGroupId);
   }, [activeGroupId]);
   
-  // Load initial data
   useEffect(() => {
     if (currentUser) {
       console.log("Loading groups and friends");
@@ -32,7 +31,23 @@ const Index = () => {
     }
   }, [currentUser, loadGroups, loadFriends]);
   
-  // Redirect to auth page if not logged in
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Success",
+        description: "You have been signed out",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center py-12 sm:px-6 lg:px-8">
@@ -63,6 +78,16 @@ const Index = () => {
   
   return (
     <div className="min-h-screen bg-gray-50">
+      <div className="flex justify-end p-4 bg-white shadow-sm">
+        <Button 
+          variant="outline"
+          onClick={handleSignOut}
+          className="flex items-center gap-2"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign out
+        </Button>
+      </div>
       {activeGroup ? (
         <GroupDetails 
           group={activeGroup}
