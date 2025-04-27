@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
@@ -127,7 +128,7 @@ export function FriendsList() {
           {friends.map((friend) => (
             <div 
               key={friend.id}
-              className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-100"
+              className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-100 relative"
             >
               <div className="flex items-center space-x-3">
                 <Avatar>
@@ -145,11 +146,11 @@ export function FriendsList() {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
-                    variant="destructive" 
+                    variant="outline" 
                     size="icon"
-                    className="text-white bg-red-500 hover:bg-red-600 border-red-600 hover:border-red-700 transition-colors duration-200 ease-in-out group"
+                    className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50 absolute right-2 top-2"
                   >
-                    <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
