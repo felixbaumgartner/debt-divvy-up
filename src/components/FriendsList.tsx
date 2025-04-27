@@ -114,8 +114,8 @@ export function FriendsList() {
       </div>
 
       {friends.length === 0 ? (
-        <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <p className="text-gray-600 mb-4">You haven't added any friends yet.</p>
+        <div className="bg-gray-50 rounded-lg p-6 text-center">
+          <p className="text-gray-600 mb-3">You haven't added any friends yet.</p>
           <Button 
             className="bg-purple-500 hover:bg-purple-600"
             onClick={() => setIsAddFriendOpen(true)}
@@ -124,22 +124,22 @@ export function FriendsList() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {friends.map((friend) => (
             <div 
               key={friend.id}
-              className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-100 relative"
+              className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm border border-gray-100 relative"
             >
-              <div className="flex items-center space-x-3">
-                <Avatar>
-                  <AvatarFallback className="bg-purple-100 text-purple-700">
+              <div className="flex items-center space-x-2">
+                <Avatar className="w-8 h-8">
+                  <AvatarFallback className="bg-purple-100 text-purple-700 text-xs">
                     {friend.name.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-medium text-gray-900">{friend.name}</h3>
+                  <h3 className="font-medium text-gray-900 text-sm">{friend.name}</h3>
                   {friend.email && (
-                    <p className="text-sm text-gray-500">{friend.email}</p>
+                    <p className="text-xs text-gray-500">{friend.email}</p>
                   )}
                 </div>
               </div>
@@ -148,9 +148,9 @@ export function FriendsList() {
                   <Button
                     variant="outline" 
                     size="icon"
-                    className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50 absolute right-2 top-2"
+                    className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50 absolute right-1 top-1 w-7 h-7"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
