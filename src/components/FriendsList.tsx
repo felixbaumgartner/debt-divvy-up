@@ -148,9 +148,9 @@ export function FriendsList() {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
-                    variant="ghost"
+                    variant="outline" 
                     size="icon"
-                    className="text-gray-500 hover:text-red-600"
+                    className="text-gray-500 hover:text-red-600 border-none"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
