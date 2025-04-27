@@ -43,6 +43,7 @@ export interface ExpensesSlice {
 
 export interface FriendsSlice {
   users: User[];
+  friends: User[];  // Add this new array for actual friends
   addUser: (name: string, email?: string, avatarUrl?: string) => void;
   loadFriends: () => Promise<void>;
   getUserById: (userId: string) => User | undefined;

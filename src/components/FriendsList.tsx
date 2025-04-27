@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function FriendsList() {
-  const users = useAppStore((state) => state.users);
+  const friends = useAppStore((state) => state.friends);
   const currentUser = useAppStore((state) => state.currentUser);
   const addUser = useAppStore((state) => state.addUser);
   const deleteFriend = useAppStore((state) => state.deleteFriend);
@@ -36,8 +36,6 @@ export function FriendsList() {
       loadFriends();
     }
   }, [currentUser, loadFriends]);
-
-  const friends = users.filter(user => user.id !== currentUser?.id);
 
   const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();

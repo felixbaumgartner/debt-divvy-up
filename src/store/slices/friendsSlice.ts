@@ -12,6 +12,7 @@ export const createFriendsSlice: StateCreator<
   FriendsSlice
 > = (set, get) => ({
   users: [],
+  friends: [], // Initialize empty friends array
   addUser: async (name, email, avatarUrl) => {
     if (!get().currentUser) return;
 
@@ -31,13 +32,12 @@ export const createFriendsSlice: StateCreator<
         }
 
         if (!existingProfile) {
-          // Generate a UUID for the new profile
           const profileId = uuidv4();
           
           const { data: profile, error: createProfileError } = await supabase
             .from('profiles')
             .insert({
-              id: profileId, // Include the required id field
+              id: profileId,
               name,
               email,
               avatar_url: avatarUrl,
@@ -53,7 +53,6 @@ export const createFriendsSlice: StateCreator<
         }
       }
 
-      // Then add the friend record
       const { data: friend, error } = await supabase
         .from('friends')
         .insert({
@@ -79,6 +78,7 @@ export const createFriendsSlice: StateCreator<
       
       set((state) => ({
         users: [...state.users.filter(u => u.id !== newUser.id), newUser],
+        friends: [...state.friends.filter(f => f.id !== newUser.id), newUser],
       }));
       
       return newUser;
@@ -107,7 +107,7 @@ export const createFriendsSlice: StateCreator<
         return;
       }
 
-      const users = friends.map((friend): User => ({
+      const friendUsers = friends.map((friend): User => ({
         id: friend.id,
         name: friend.friend_name,
         email: friend.friend_email,
@@ -117,10 +117,13 @@ export const createFriendsSlice: StateCreator<
       // Preserve any users that might have been added from group members
       // but aren't in the friends list
       const existingUsers = get().users;
-      const friendIds = new Set(users.map(u => u.id));
+      const friendIds = new Set(friendUsers.map(u => u.id));
       const otherUsers = existingUsers.filter(u => !friendIds.has(u.id));
       
-      set({ users: [...users, ...otherUsers] });
+      set({ 
+        users: [...friendUsers, ...otherUsers],
+        friends: friendUsers, // Set the friends array separately
+      });
     } catch (error) {
       console.error('Error loading friends:', error);
     }
@@ -156,7 +159,9 @@ export const createFriendsSlice: StateCreator<
 
       // Update local state
       set((state) => ({
-        users: state.users.filter(user => user.id !== friendId)
+        friends: state.friends.filter(friend => friend.id !== friendId),
+        // Keep the user in the users array as they might be needed for groups
+        users: state.users
       }));
 
       toast({
