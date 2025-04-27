@@ -148,7 +148,7 @@ export function FriendsList() {
                   <Button
                     variant="outline" 
                     size="icon"
-                    className="text-gray-500 hover:text-red-600 border-none"
+                    className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
