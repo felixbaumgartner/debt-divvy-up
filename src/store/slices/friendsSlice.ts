@@ -1,4 +1,3 @@
-
 import { StateCreator } from 'zustand';
 import { AppState, FriendsSlice } from '../types';
 import { supabase } from '@/integrations/supabase/client';
@@ -142,5 +141,36 @@ export const createFriendsSlice: StateCreator<
   getUserById: (userId) => {
     const { users } = get();
     return users.find(u => u.id === userId);
+  },
+  deleteFriend: async (friendId: string) => {
+    try {
+      const { error } = await supabase
+        .from('friends')
+        .delete()
+        .eq('id', friendId);
+
+      if (error) {
+        console.error('Error deleting friend:', error);
+        throw error;
+      }
+
+      // Update local state
+      set((state) => ({
+        users: state.users.filter(user => user.id !== friendId)
+      }));
+
+      toast({
+        title: "Success",
+        description: "Friend removed successfully",
+      });
+    } catch (error) {
+      console.error('Error in deleteFriend:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove friend",
+        variant: "destructive",
+      });
+      throw error;
+    }
   },
 });

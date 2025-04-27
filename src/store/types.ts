@@ -1,4 +1,3 @@
-
 import { Group, User, Expense, Payment, DebtSummary } from '@/types';
 
 export interface AuthSlice {
@@ -48,6 +47,7 @@ export interface FriendsSlice {
   loadFriends: () => Promise<void>;
   getUserById: (userId: string) => User | undefined;
   addUserToList: (user: User) => void;
+  deleteFriend: (friendId: string) => Promise<void>;
 }
 
 export interface AppState extends 

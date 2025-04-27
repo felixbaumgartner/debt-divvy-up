@@ -5,14 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { toast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function FriendsList() {
   const users = useAppStore((state) => state.users);
   const currentUser = useAppStore((state) => state.currentUser);
   const addUser = useAppStore((state) => state.addUser);
+  const deleteFriend = useAppStore((state) => state.deleteFriend);
   const loadFriends = useAppStore((state) => state.loadFriends);
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
   const [newFriendName, setNewFriendName] = useState("");
@@ -49,6 +61,14 @@ export function FriendsList() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteFriend = async (friendId: string, friendName: string) => {
+    try {
+      await deleteFriend(friendId);
+    } catch (error) {
+      console.error('Error deleting friend:', error);
     }
   };
 
@@ -110,19 +130,49 @@ export function FriendsList() {
           {friends.map((friend) => (
             <div 
               key={friend.id}
-              className="flex items-center space-x-3 p-4 bg-white rounded-lg shadow-sm border border-gray-100"
+              className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-100"
             >
-              <Avatar>
-                <AvatarFallback className="bg-purple-100 text-purple-700">
-                  {friend.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-medium text-gray-900">{friend.name}</h3>
-                {friend.email && (
-                  <p className="text-sm text-gray-500">{friend.email}</p>
-                )}
+              <div className="flex items-center space-x-3">
+                <Avatar>
+                  <AvatarFallback className="bg-purple-100 text-purple-700">
+                    {friend.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-medium text-gray-900">{friend.name}</h3>
+                  {friend.email && (
+                    <p className="text-sm text-gray-500">{friend.email}</p>
+                  )}
+                </div>
               </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-gray-500 hover:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove Friend</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to remove {friend.name} from your friends list? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDeleteFriend(friend.id, friend.name)}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Remove
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           ))}
         </div>
